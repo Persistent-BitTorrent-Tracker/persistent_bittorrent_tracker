@@ -9,6 +9,49 @@ This guide provides all commands needed to deploy and interact with the Persiste
 - **MetaMask** (optional): For frontend wallet interactions
 - **Test ETH/AVAX**: Faucet funds for gas fees
 
+## Architecture & Data Flow
+
+**IMPORTANT:** The backend server is **REQUIRED** for blockchain interactions. Here's how the system works:
+
+```
+┌──────────────┐         ┌──────────────┐         ┌──────────────┐
+│   Frontend   │   HTTP  │   Backend    │  Web3   │  Blockchain  │
+│  (Next.js)   │ ──────> │  (Express)   │ ──────> │  (Contracts) │
+│              │         │              │         │              │
+│ • UI/UX      │         │ • Pays gas   │         │ • Reputation │
+│ • Wallet     │         │ • Validates  │         │ • PeerRegistry│
+│ • Signatures │         │ • Tracker    │         │ • RepFactory │
+└──────────────┘         └──────────────┘         └──────────────┘
+```
+
+**What each component does:**
+
+1. **Frontend** (Optional for testing):
+   - User interface and wallet connection (MetaMask)
+   - Signs messages for authentication
+   - Makes HTTP API calls to backend
+   - Has demo/fallback mode when backend unavailable (simulated data only)
+   - **DOES NOT** directly interact with smart contracts
+
+2. **Backend** (Required):
+   - Receives API requests from frontend or CLI
+   - Validates user signatures
+   - Sends transactions to smart contracts (pays gas fees)
+   - Runs BitTorrent tracker on port 8000
+   - Enforces reputation rules (MIN_RATIO)
+   - **This is your only gateway to the blockchain**
+
+3. **Smart Contracts** (On-chain):
+   - ReputationTracker: Stores upload/download stats
+   - RepFactory: Deploys new trackers for migrations
+   - Persists data permanently on blockchain
+
+**Deployment Modes:**
+
+- **Backend Only**: Full functionality via CLI scripts (`npm run register`, `npm run announce`)
+- **Backend + Frontend**: Full GUI experience with wallet integration
+- **Frontend Only**: Demo mode with simulated data (no blockchain interaction)
+
 ## Quick Start (Recommended Path)
 
 ### 1. Clone and Install Dependencies
@@ -204,7 +247,63 @@ npm run dev
 
 Leave this terminal running. Open a new terminal for the next steps.
 
-### 7. Verify Deployment Status
+### 7. (Optional) Start Frontend Dashboard
+
+The frontend provides a GUI for interacting with PBTS. **Note:** Frontend requires the backend server to be running for blockchain interactions.
+
+```bash
+# In a new terminal
+cd frontend
+cp .env.local.example .env.local
+```
+
+Edit `frontend/.env.local`:
+
+```env
+# Backend API URL (must match your running backend server)
+NEXT_PUBLIC_BACKEND_URL=http://localhost:3001
+
+# Chain ID (must match your deployment)
+NEXT_PUBLIC_CHAIN_ID=43113  # Fuji: 43113, Sepolia: 11155111
+
+# Contract address (from your deployment)
+NEXT_PUBLIC_REPUTATION_TRACKER_ADDRESS=0x<tracker_address>
+```
+
+Install dependencies and start the dev server:
+
+```bash
+npm install  # or: pnpm install
+npm run dev
+```
+
+**Expected Output:**
+```
+  VITE v5.4.21  ready in 512 ms
+
+  ➜  Local:   http://localhost:3000/
+  ➜  Network: use --host to expose
+  ➜  press h + enter to show help
+```
+
+**Open your browser to http://localhost:3000**
+
+**Frontend Features:**
+- Connect MetaMask wallet
+- View reputation stats (upload/download/ratio)
+- Simulate transfers
+- Request peer lists (announce)
+- View activity feed
+- Monitor contract migrations
+
+**Important Notes:**
+- Frontend runs independently of backend, but **requires backend for blockchain operations**
+- If backend is unavailable, frontend shows demo data with a warning
+- All transactions are signed by your MetaMask wallet, but sent via backend
+- Backend pays the gas fees, not your wallet
+- Built with **Vite + React** for fast development
+
+### 8. Verify Deployment Status
 
 Check contract status and reputation chain:
 
@@ -619,33 +718,122 @@ const signature = await provider.send("personal_sign", [message, address]);
 - **Avalanche Fuji**: https://faucet.avax.network/
 - **Ethereum Sepolia**: https://sepoliafaucet.com/
 
+### Frontend Shows "Backend unavailable — showing demo result"
+
+**Problem:** Frontend cannot connect to backend API.
+
+**Solution:** 
+1. Verify backend server is running on the correct port:
+   ```bash
+   cd backend
+   npm run dev
+   ```
+   Look for: `[PBTS] Tracker server running on port 3001`
+
+2. Check `NEXT_PUBLIC_BACKEND_URL` in `frontend/.env.local` matches backend URL:
+   ```env
+   NEXT_PUBLIC_BACKEND_URL=http://localhost:3001
+   ```
+
+3. Verify no firewall blocking port 3001
+
+4. Check backend health endpoint:
+   ```bash
+   curl http://localhost:3001/health
+   ```
+   Expected: `{"status":"ok","timestamp":"..."}`
+
+**Note:** Frontend has a fallback demo mode that shows simulated data when backend is unavailable. This is for UI development only - no blockchain interactions occur in demo mode.
+
+### Frontend Transaction Buttons Don't Work
+
+**Problem:** Clicking Register/Announce/Transfer does nothing or shows errors.
+
+**Root Cause:** Backend server is required for all blockchain operations.
+
+**Solution:**
+1. Ensure backend is running (`cd backend && npm run dev`)
+2. Check browser console for API errors
+3. Verify MetaMask is connected to the correct network (Fuji or Sepolia)
+4. Check that `NEXT_PUBLIC_CHAIN_ID` matches your deployment network
+5. Confirm `NEXT_PUBLIC_REPUTATION_TRACKER_ADDRESS` is set correctly
+
+### "Failed to fetch" Errors in Frontend
+
+**Problem:** API calls to backend fail with network errors.
+
+**Common Causes:**
+- Backend server not running
+- Wrong `NEXT_PUBLIC_BACKEND_URL` in frontend config
+- CORS issues (backend should allow all origins in development)
+- Port 3001 already in use by another service
+
+**Solution:**
+```bash
+# Kill any process using port 3001
+lsof -ti:3001 | xargs kill -9
+
+# Restart backend
+cd backend
+npm run dev
+```
+
 ## Architecture Overview
 
 ```
-┌─────────────────────────────────────────────────────────────┐
-│                      PBTS Architecture                       │
-├─────────────────────────────────────────────────────────────┤
-│                                                               │
-│  Frontend (React)                                            │
-│      │                                                        │
-│      │ HTTP API calls                                        │
-│      ↓                                                        │
-│  Backend (Express + ethers.js)                               │
-│      │                                                        │
-│      │ Contract calls (register, updateReputation)           │
-│      ↓                                                        │
-│  RepFactory (Solidity)                                       │
-│      │                                                        │
-│      │ Deploys                                               │
-│      ↓                                                        │
-│  ReputationTracker (Solidity)                                │
-│      │                                                        │
-│      │ REFERRER → Previous ReputationTracker                │
-│      │            (single-hop delegation)                    │
-│      ↓                                                        │
-│  Blockchain (Avalanche Fuji / Ethereum Sepolia)              │
-│                                                               │
-└─────────────────────────────────────────────────────────────┘
+┌─────────────────────────────────────────────────────────────────────────┐
+│                         PBTS Architecture                                │
+├─────────────────────────────────────────────────────────────────────────┤
+│                                                                           │
+│  ┌─────────────────┐                                                    │
+│  │    Frontend     │  HTTP (optional)                                   │
+│  │   (Next.js)     │                                                    │
+│  │                 │                                                    │
+│  │ • MetaMask      │                                                    │
+│  │ • Sign messages │                                                    │
+│  │ • Demo fallback │                                                    │
+│  └────────┬────────┘                                                    │
+│           │                                                             │
+│           │ POST /register                                              │
+│           │ POST /report                                                │
+│           │ POST /announce                                              │
+│           ↓                                                             │
+│  ┌─────────────────┐                                                    │
+│  │    Backend      │  ethers.js                                        │
+│  │   (Express)     │ ──────────────────────┐                          │
+│  │                 │                        │                          │
+│  │ • API server    │                        │                          │
+│  │ • Signature     │                        │                          │
+│  │   validation    │                        │                          │
+│  │ • Pays gas fees │                        │                          │
+│  │ • BT tracker    │                        ↓                          │
+│  └─────────────────┘           ┌────────────────────────┐             │
+│                                  │   RepFactory.sol       │             │
+│                                  │                        │             │
+│                                  │ • Deploys trackers     │             │
+│                                  │ • Manages migrations   │             │
+│                                  └───────────┬────────────┘             │
+│                                              │ deploys                  │
+│                                              ↓                          │
+│                                  ┌────────────────────────┐             │
+│                                  │ ReputationTracker.sol  │             │
+│                                  │                        │             │
+│                                  │ • User registry        │             │
+│                                  │ • Upload/download      │             │
+│                                  │ • Referrer chain       │             │
+│                                  └────────────────────────┘             │
+│                                                                           │
+│  Blockchain Layer (Avalanche Fuji / Ethereum Sepolia)                   │
+│                                                                           │
+└─────────────────────────────────────────────────────────────────────────┘
+
+Data Flow:
+  1. User signs message with MetaMask (frontend or CLI)
+  2. Frontend/CLI sends signature + data to backend API
+  3. Backend validates signature, constructs transaction
+  4. Backend sends transaction to blockchain (pays gas)
+  5. Smart contract updates on-chain reputation
+  6. Backend returns result to frontend/CLI
 ```
 
 ## Key Concepts
