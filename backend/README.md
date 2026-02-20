@@ -12,19 +12,30 @@ backend/
 │   ├── register.ts       # POST /register
 │   ├── report.ts         # POST /report
 │   └── announce.ts       # POST /announce
+├── scripts/
+│   ├── deploy.ts         # Full initial deployment (factory + first tracker)
+│   ├── migrate.ts        # Controlled migration to a new tracker contract
+│   ├── status.ts         # Show contract status, referrer chain, reputation
+│   ├── register.ts       # Register deployer wallet via the API
+│   └── announce.ts       # Test announce via the API
+├── client/
+│   ├── index.ts          # PBTSClient — WebTorrent + receipt integration
+│   ├── cli.ts            # CLI demo tool
+│   └── receiptGenerator.ts  # Cryptographic receipt signing & attribution
 ├── utils/
 │   ├── signatures.ts     # ECDSA signature verification helpers
 │   └── contract.ts       # ethers.js wrappers for ReputationTracker & RepFactory
 ├── tests/
 │   ├── setup.ts          # Jest environment setup (dummy env vars)
 │   ├── api.test.ts       # Integration tests for all endpoints
+│   ├── receiptGenerator.test.ts  # Unit tests for ReceiptGenerator
 │   └── signatures.test.ts
 └── server.ts             # Express app + server entry point
 ```
 
 ## Technology Stack
 
-- **Runtime**: Bun / Node.js 18+
+- **Runtime**: Node.js 18+
 - **Framework**: Express.js
 - **Blockchain**: ethers.js v6
 - **Networks**: Ethereum Sepolia (chain 11155111) or Avalanche Fuji (chain 43113)
@@ -162,20 +173,38 @@ Returns `{ "status": "ok", "timestamp": "..." }`. Used by load balancers and CI 
 
 ---
 
+## npm Scripts
+
+| Script | Description |
+|---|---|
+| `npm run deploy` | Full initial deployment (factory + first tracker) |
+| `npm run migrate` | Controlled migration to a new ReputationTracker |
+| `npm run status` | Show current contract info, referrer chain, and reputation |
+| `npm test` | Run the Jest test suite |
+| `npm run test:all` | Run Jest + Foundry contract tests |
+| `npm run dev` | Start the server in watch/hot-reload mode |
+| `npm run start` | Start the server (production) |
+| `npm run register` | Register the deployer wallet via the running API |
+| `npm run announce` | Test announce against the running tracker |
+
 ## Running the Server
 
 ```bash
 # Development (hot reload)
-bun run dev
+npm run dev
 
 # Production
-bun run start
+npm run start
 ```
 
 ## Running Tests
 
 ```bash
+# Backend Jest tests only
 npm test
+
+# Backend Jest + Foundry contract tests
+npm run test:all
 ```
 
 ## Testing the API
@@ -210,4 +239,79 @@ Tests mock all blockchain calls so no live node is needed.
 - All user signatures are verified before any on-chain write
 - Receipt timestamps are checked for freshness to prevent replay attacks
 - The `/migrate` endpoint is protected by a secret bearer token
+
+---
+
+## Migration Flow
+
+The system supports **controlled portability** — you can rotate to a new
+`ReputationTracker` contract without migrating any data.  Reputation from the
+old contract is instantly readable from the new one via single-hop delegation.
+
+### Initial Deployment
+
+```bash
+# 1. Build the Solidity contracts (only needed to deploy the factory)
+cd contracts && forge build && cd ../backend
+
+# 2. Set DEPLOYER_PRIVATE_KEY and RPC_URL in backend/.env, then:
+npm run deploy
+# → prints FACTORY_ADDRESS and REPUTATION_TRACKER_ADDRESS
+
+# 3. Add those two values to .env, then start the tracker
+npm run start
+```
+
+### Controlled Migration (key rotation / server change / upgrade)
+
+```bash
+# On the new server instance (clone the repo, copy .env):
+npm run migrate
+# or, if you need to specify the old contract explicitly:
+npm run migrate -- --old-contract 0x<old-tracker-address>
+
+# The script prints the new contract address.
+# Update REPUTATION_TRACKER_ADDRESS in .env, then restart:
+npm run start
+```
+
+### Sequence Diagram
+
+```mermaid
+sequenceDiagram
+    participant Op as Operator
+    participant Sc as migrate.ts
+    participant Fa as RepFactory
+    participant NT as New ReputationTracker
+    participant OT as Old ReputationTracker
+
+    Op->>Sc: npm run migrate
+    Sc->>Fa: deployNewTracker(oldContractAddress)
+    Fa->>NT: new ReputationTracker(referrer=oldContract)
+    Fa->>NT: setTracker(backendWallet)
+    Fa-->>Sc: newContractAddress
+    Sc-->>Op: "Update REPUTATION_TRACKER_ADDRESS and restart"
+
+    Note over Op: Operator updates .env and restarts
+
+    Op->>NT: register(user) / updateReputation(user, ...)
+    Note over NT: Writes go to new contract
+
+    Op->>NT: getReputation(user)
+    alt user has entry in NT
+        NT-->>Op: local reputation
+    else user not yet in NT
+        NT->>OT: getReputation(user) [single-hop delegation]
+        OT-->>NT: historical reputation
+        NT-->>Op: historical reputation
+    end
+```
+
+### How It Works
+
+- `getReputation(user)` and `getRatio(user)` on the **new** contract delegate
+  to the old one if the user has no entry yet (`lastUpdated == 0`).
+- Delegation is **single-hop only** — the old contract does not chain further.
+- All new writes (`register`, `/report`) go to the new contract.
+- No data migration is ever needed; reputation is preserved automatically.
 

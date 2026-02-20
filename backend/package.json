@@ -7,7 +7,11 @@
   "scripts": {
     "dev": "tsx --watch server.ts",
     "start": "tsx server.ts",
-    "test": "node ../node_modules/.bin/jest --testPathPattern=tests/",
+    "test": "node node_modules/.bin/jest --testPathPattern=tests/",
+    "test:all": "node node_modules/.bin/jest --testPathPattern=tests/ && cd ../contracts && forge test",
+    "deploy": "tsx scripts/deploy.ts",
+    "migrate": "tsx scripts/migrate.ts",
+    "status": "tsx scripts/status.ts",
     "register": "tsx scripts/register.ts",
     "announce": "tsx scripts/announce.ts"
   },

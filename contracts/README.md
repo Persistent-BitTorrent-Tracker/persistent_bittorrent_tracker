@@ -165,13 +165,56 @@ cast <subcommand>
 
 ## Migration Flow
 
-When a tracker needs to rotate to a new contract (key rotation, server change, etc.):
+When a tracker needs to rotate to a new contract (key rotation, server change, upgrade, etc.):
+
+### Sequence Diagram
+
+```mermaid
+sequenceDiagram
+    participant Op as Operator
+    participant Sc as migrate.ts
+    participant Fa as RepFactory
+    participant NT as New ReputationTracker
+    participant OT as Old ReputationTracker
+
+    Op->>Sc: npm run migrate
+    Sc->>Fa: deployNewTracker(oldContractAddress)
+    Fa->>NT: new ReputationTracker(referrer=oldContract)
+    Fa->>NT: setTracker(backendWallet)
+    Fa-->>Sc: newContractAddress
+    Sc-->>Op: "Update REPUTATION_TRACKER_ADDRESS and restart"
+
+    Note over Op: Operator updates .env and restarts
+
+    Op->>NT: register(user) / updateReputation(user, ...)
+    Note over NT: Writes go to new contract
+
+    Op->>NT: getReputation(user)
+    alt user has entry in NT
+        NT-->>Op: local reputation
+    else user not yet in NT
+        NT->>OT: getReputation(user) [single-hop delegation]
+        OT-->>NT: historical reputation
+        NT-->>Op: historical reputation
+    end
+```
+
+### How It Works
 
 ```
 RepFactory.deployNewTracker(oldTrackerAddress)
     → new ReputationTracker(referrer = oldTrackerAddress)
+    → setTracker(backendWallet)        ← backend can write immediately
     → getReputation(user) delegates to old contract if user has no new-contract entry
 ```
 
-See the backend `POST /migrate` endpoint for how the server automates this.
+- **Single-hop delegation**: `getReputation` and `getRatio` check locally first;
+  if the user has `lastUpdated == 0`, the call is forwarded to `REFERRER` once.
+- **Zero data migration**: all historical reputation is readable from the new
+  contract without copying any state.
+- **Immediate availability**: the backend wallet is set as the authorized tracker
+  on the new contract automatically by `deployNewTracker`.
+
+See `backend/scripts/migrate.ts` and the backend `POST /migrate` endpoint for
+how the operator automates this flow.
 

@@ -61,6 +61,10 @@ contract RepFactory {
         }
 
         ReputationTracker newTracker = new ReputationTracker(_referrer);
+        // Immediately grant the calling backend wallet write access to the new
+        // tracker so that register / updateReputation calls work without a
+        // separate setTracker transaction.
+        newTracker.setTracker(msg.sender);
         emit NewReputationTracker(address(newTracker), _referrer, msg.sender);
         return address(newTracker);
     }
