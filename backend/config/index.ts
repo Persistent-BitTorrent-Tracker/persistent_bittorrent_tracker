@@ -39,6 +39,9 @@ const config = {
     process.env["TIMESTAMP_WINDOW_SECONDS"] ?? "300",
     10
   ),
+
+  /** Port for the BitTorrent tracker (HTTP announce + WebSocket). */
+  trackerPort: parseInt(process.env["TRACKER_PORT"] ?? "8000", 10),
 };
 
 export default config;

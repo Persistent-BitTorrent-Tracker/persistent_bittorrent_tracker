@@ -6,3 +6,6 @@ process.env["DEPLOYER_PRIVATE_KEY"] =
 process.env["REPUTATION_TRACKER_ADDRESS"] =
   "0x0000000000000000000000000000000000000001";
 process.env["AVALANCHE_FUJI_RPC_URL"] = "http://localhost:8545";
+process.env["NODE_ENV"] = "test";
+// Use port 0 so each test suite gets a random available port (avoids EADDRINUSE)
+process.env["PORT"] = "0";
