@@ -30,7 +30,7 @@ contract ReputationTracker {
         _;
     }
 
-    function _onlyTracker() internal {
+    function _onlyTracker() internal view {
         require(msg.sender == tracker, "Only tracker");
     }
 
