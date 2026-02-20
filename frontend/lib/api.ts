@@ -1,11 +1,11 @@
 /**
  * Backend API client for PBTS.
  *
- * Reads the backend URL from NEXT_PUBLIC_BACKEND_URL (defaults to localhost:3001).
+ * Reads the backend URL from VITE_BACKEND_URL (defaults to localhost:3001).
  */
 
 const BASE_URL =
-  process.env["NEXT_PUBLIC_BACKEND_URL"] ?? "http://localhost:3001"
+  import.meta.env.VITE_BACKEND_URL ?? "http://localhost:3001"
 
 // ── Types matching backend response shapes ────────────────────────────────
 

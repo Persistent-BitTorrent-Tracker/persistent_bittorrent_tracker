@@ -5,7 +5,7 @@ This guide provides all commands needed to deploy and interact with the Persiste
 ## Prerequisites
 
 - **Foundry**: Install from [getfoundry.sh](https://getfoundry.sh)
-- **Node.js 18+** or **Bun**: For running the backend server
+- **Node.js 18+**: For running the backend server and frontend
 - **MetaMask** (optional): For frontend wallet interactions
 - **Test ETH/AVAX**: Faucet funds for gas fees
 
@@ -20,7 +20,12 @@ cd eth_denver_2026/persistent_bittorrent_tracker
 
 # Install backend dependencies
 cd backend
-npm install  # or: bun install
+npm install
+cd ..
+
+# Install frontend dependencies
+cd frontend
+npm install
 cd ..
 
 # Install Foundry dependencies
@@ -91,6 +96,28 @@ TIMESTAMP_WINDOW_SECONDS=300
 
 # BitTorrent tracker port
 TRACKER_PORT=8000
+```
+
+#### Frontend Environment
+
+```bash
+cd ../frontend
+cp .env.local.example .env.local
+```
+
+Edit `frontend/.env.local`:
+
+```env
+# URL of the PBTS backend server
+VITE_BACKEND_URL=http://localhost:3001
+
+# Chain ID matching your deployed contracts
+#   Ethereum Sepolia : 11155111
+#   Avalanche Fuji   : 43113
+VITE_CHAIN_ID=43113
+
+# Address of the deployed ReputationTracker contract (filled after deployment)
+VITE_REPUTATION_TRACKER_ADDRESS=
 ```
 
 ### 3. Build Contracts
@@ -204,7 +231,34 @@ npm run dev
 
 Leave this terminal running. Open a new terminal for the next steps.
 
-### 7. Verify Deployment Status
+### 7. Start Frontend (Optional)
+
+The frontend is a Vite + React SPA. In a new terminal:
+
+```bash
+cd frontend
+npm run dev
+```
+
+**Expected Output:**
+```
+  VITE v6.x.x  ready in 300 ms
+
+  ➜  Local:   http://localhost:5173/
+  ➜  Network: use --host to expose
+```
+
+Open `http://localhost:5173` in your browser. Connect MetaMask to use the dashboard.
+
+To build for production:
+
+```bash
+cd frontend
+npm run build       # outputs to frontend/dist/
+npm run preview     # preview the production build locally
+```
+
+### 8. Verify Deployment Status
 
 Check contract status and reputation chain:
 
@@ -626,7 +680,7 @@ const signature = await provider.send("personal_sign", [message, address]);
 │                      PBTS Architecture                       │
 ├─────────────────────────────────────────────────────────────┤
 │                                                               │
-│  Frontend (React)                                            │
+│  Frontend (Vite + React)                                    │
 │      │                                                        │
 │      │ HTTP API calls                                        │
 │      ↓                                                        │
