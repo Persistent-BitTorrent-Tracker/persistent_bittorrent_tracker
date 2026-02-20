@@ -3,16 +3,13 @@ pragma solidity ^0.8.20;
 
 import {Script} from "forge-std/Script.sol";
 import {console} from "forge-std/console.sol";
-import {RepFactory} from "../src/RepFactory.sol";
+import {ReputationTracker} from "../src/ReputationTracker.sol";
 
 contract DeployPBTS is Script {
     function run() external {
         vm.startBroadcast();
-        RepFactory factory = new RepFactory();
-        // Deploy first tracker contract (no referrer)
-        address firstTracker = factory.deployNewTracker(address(0));
-        console.log("RepFactory:", address(factory));
-        console.log("First ReputationTracker:", firstTracker);
+        ReputationTracker tracker = new ReputationTracker(address(0));
+        console.log("ReputationTracker:", address(tracker));
         vm.stopBroadcast();
     }
 }

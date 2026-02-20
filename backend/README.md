@@ -178,6 +178,24 @@ bun run start
 npm test
 ```
 
+## Testing the API
+
+Use the provided scripts to interact with the running server:
+
+```bash
+# Register the deployer wallet on-chain
+npm run register
+
+# Announce to the tracker (check reputation and get peers)
+npm run announce [infohash] [event]
+
+# Examples
+npm run announce                    # Uses defaults: infohash="abc123def456", event="started"
+npm run announce myhash123 completed  # Custom infohash and event
+```
+
+These scripts sign messages with `DEPLOYER_PRIVATE_KEY` from `.env` and send requests to the local server. Ensure the backend is running (`npm run dev`) and contracts are deployed.
+
 Tests mock all blockchain calls so no live node is needed.
 
 ## State Management
