@@ -27,21 +27,24 @@ backend/
 - **Runtime**: Bun / Node.js 18+
 - **Framework**: Express.js
 - **Blockchain**: ethers.js v6
-- **Network**: Avalanche Fuji testnet (chain ID 43113)
+- **Networks**: Ethereum Sepolia (chain 11155111) or Avalanche Fuji (chain 43113)
 
 ## Environment Variables
 
-Copy `.env.example` from the repository root and fill in your values:
+Copy `.env.example` from the repository root to `backend/.env` and fill in your values. The backend resolves the RPC URL in priority order: `RPC_URL` > `ETH_SEPOLIA_RPC_URL` > `AVALANCHE_FUJI_RPC_URL`.
 
 | Variable | Required | Description |
 |---|---|---|
-| `AVALANCHE_FUJI_RPC_URL` | Yes | JSON-RPC endpoint (default: Fuji public) |
 | `DEPLOYER_PRIVATE_KEY` | Yes | Private key of the tracker wallet (pays gas) |
 | `REPUTATION_TRACKER_ADDRESS` | Yes | Currently active `ReputationTracker` contract |
 | `FACTORY_ADDRESS` | Yes | Deployed `RepFactory` contract (used during migration) |
 | `ADMIN_SECRET` | Yes | Bearer token for the `/migrate` admin endpoint |
-| `CHAIN_ID` | No | Chain ID (default: `43113`) |
+| `RPC_URL` | No | Generic JSON-RPC endpoint (highest priority) |
+| `ETH_SEPOLIA_RPC_URL` | No | Sepolia RPC endpoint (second priority) |
+| `AVALANCHE_FUJI_RPC_URL` | No | Fuji RPC endpoint (third priority; defaults to public Fuji) |
+| `CHAIN_ID` | No | Chain ID; auto-inferred from RPC URL if omitted |
 | `PORT` | No | Server port (default: `3001`) |
+| `NODE_ENV` | No | Environment name (default: `development`) |
 | `MIN_RATIO` | No | Minimum upload/download ratio for access (default: `0.5`) |
 | `TIMESTAMP_WINDOW_SECONDS` | No | Receipt freshness window in seconds (default: `300`) |
 
