@@ -152,3 +152,35 @@ export async function checkHealth(): Promise<boolean> {
     return false
   }
 }
+
+export interface MigrateResponse {
+  success: boolean
+  oldContract: string
+  newContract: string
+  message: string
+}
+
+/**
+ * Trigger a contract migration via POST /migrate (admin only).
+ *
+ * Requires the admin secret set in VITE_ADMIN_SECRET.
+ */
+export async function migrateContract(
+  oldContract: string,
+  adminSecret: string
+): Promise<MigrateResponse> {
+  const res = await fetch(`${BASE_URL}/migrate`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${adminSecret}`,
+    },
+    body: JSON.stringify({ oldContract }),
+  })
+  const data = await res.json()
+  if (!res.ok) {
+    const message = (data as ApiError).error ?? `HTTP ${res.status}`
+    throw new Error(message)
+  }
+  return data as MigrateResponse
+}

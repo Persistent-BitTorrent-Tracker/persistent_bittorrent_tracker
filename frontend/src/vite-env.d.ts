@@ -4,6 +4,7 @@ interface ImportMetaEnv {
   readonly VITE_BACKEND_URL: string
   readonly VITE_CHAIN_ID: string
   readonly VITE_REPUTATION_TRACKER_ADDRESS: string | undefined
+  readonly VITE_ADMIN_SECRET: string | undefined
 }
 
 interface ImportMeta {
