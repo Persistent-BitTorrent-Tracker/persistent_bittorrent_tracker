@@ -8,15 +8,41 @@ function requireEnv(key: string, fallback?: string): string {
   return value;
 }
 
+/**
+ * Resolve the JSON-RPC URL in priority order:
+ *   1. RPC_URL          — generic, network-agnostic
+ *   2. ETH_SEPOLIA_RPC_URL — Ethereum Sepolia
+ *   3. AVALANCHE_FUJI_RPC_URL — Avalanche Fuji (legacy compat)
+ *   4. Hard-coded Fuji public endpoint as last-resort fallback
+ */
+function resolveRpcUrl(): string {
+  return (
+    process.env["RPC_URL"] ??
+    process.env["ETH_SEPOLIA_RPC_URL"] ??
+    process.env["AVALANCHE_FUJI_RPC_URL"] ??
+    "https://api.avax-test.network/ext/bc/C/rpc"
+  );
+}
+
+/**
+ * Infer a sensible default chain ID from the RPC URL when CHAIN_ID is not
+ * explicitly set.  Defaults to Fuji (43113) if the URL is unrecognised.
+ */
+function resolveChainId(): number {
+  if (process.env["CHAIN_ID"]) {
+    return parseInt(process.env["CHAIN_ID"], 10);
+  }
+  const rpc = resolveRpcUrl().toLowerCase();
+  if (rpc.includes("sepolia") || rpc.includes("11155111")) return 11155111;
+  return 43113; // Avalanche Fuji
+}
+
 const config = {
   port: parseInt(process.env["PORT"] ?? "3001", 10),
   nodeEnv: process.env["NODE_ENV"] ?? "development",
 
-  /** Avalanche Fuji (or localhost Hardhat) JSON-RPC endpoint */
-  rpcUrl: requireEnv(
-    "AVALANCHE_FUJI_RPC_URL",
-    "https://api.avax-test.network/ext/bc/C/rpc"
-  ),
+  /** JSON-RPC endpoint — set RPC_URL, ETH_SEPOLIA_RPC_URL, or AVALANCHE_FUJI_RPC_URL */
+  rpcUrl: resolveRpcUrl(),
 
   /** Private key of the tracker server wallet (pays gas for contract writes) */
   trackerPrivateKey: requireEnv("DEPLOYER_PRIVATE_KEY", ""),
@@ -27,8 +53,13 @@ const config = {
   /** RepFactory address — used only during migration */
   factoryAddress: requireEnv("FACTORY_ADDRESS", "0x0000000000000000000000000000000000000000"),
 
-  /** Chain ID — Avalanche Fuji = 43113 */
-  chainId: parseInt(process.env["CHAIN_ID"] ?? "43113", 10),
+  /**
+   * Chain ID.
+   *   Ethereum Sepolia : 11155111
+   *   Avalanche Fuji   : 43113
+   * Auto-inferred from RPC_URL if not explicitly set.
+   */
+  chainId: resolveChainId(),
 
   /**
    * Minimum upload/download ratio required to receive a peer list.
@@ -51,3 +82,4 @@ const config = {
 };
 
 export default config;
+
