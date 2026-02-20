@@ -10,20 +10,16 @@ contract ReputationTrackerTest is Test {
     ReputationTracker public tracker1;
     ReputationTracker public tracker2;
 
-    address public trackerBackend = address(this); // test contract acts as tracker
     address public user1 = address(0x1001);
     address public user2 = address(0x1002);
 
     function setUp() public {
         factory = new RepFactory();
 
-        // Deploy first tracker (no referrer)
+        // Deploy first tracker (no referrer).
+        // The test contract (address(this)) is the caller, so it becomes the permanent tracker.
         address t1Addr = factory.deployNewTracker(address(0));
         tracker1 = ReputationTracker(t1Addr);
-
-        // The factory is the owner of tracker1; set the test contract as the tracker
-        vm.prank(address(factory));
-        tracker1.setTracker(trackerBackend);
     }
 
     // ── Basic registration and reputation ─────────────────────────────────────
@@ -64,9 +60,6 @@ contract ReputationTrackerTest is Test {
         tracker1.updateReputation(user1, 2 * tracker1.INITIAL_CREDIT(), tracker1.INITIAL_CREDIT());
 
         uint256 ratio = tracker1.getRatio(user1);
-        // uploadBytes = INITIAL_CREDIT + 2*INITIAL_CREDIT = 3*INITIAL_CREDIT
-        // downloadBytes = INITIAL_CREDIT
-        // ratio = 3 * 1e18
         assertEq(ratio, 3e18);
     }
 
@@ -78,12 +71,29 @@ contract ReputationTrackerTest is Test {
         tracker1.register(user1);
     }
 
-    function test_SetTracker() public {
-        address newBackend = address(0xBEEF);
-        // owner of tracker1 is the factory
-        vm.prank(address(factory));
-        tracker1.setTracker(newBackend);
-        assertEq(tracker1.tracker(), newBackend);
+    // ── Caller becomes permanent tracker ──────────────────────────────────────
+
+    function test_CallerIsPermanentTracker() public {
+        assertEq(tracker1.tracker(), address(this));
+    }
+
+    // ── Tracker is immutable (no setTracker) ─────────────────────────────────
+
+    function test_TrackerIsImmutable() public view {
+        // tracker is set at construction and cannot be changed — there is no setTracker function
+        assertEq(tracker1.tracker(), address(this));
+    }
+
+    // ── Anyone can deploy via factory ─────────────────────────────────────────
+
+    function test_AnyoneCanDeploy() public {
+        address randomUser = address(0xCAFE);
+        vm.prank(randomUser);
+        address newT = factory.deployNewTracker(address(0));
+        assertTrue(newT != address(0));
+
+        ReputationTracker t = ReputationTracker(newT);
+        assertEq(t.tracker(), randomUser);
     }
 
     // ── Migration: reputation preserved across tracker contracts ─────────────
@@ -100,8 +110,6 @@ contract ReputationTrackerTest is Test {
         // Deploy tracker2 with tracker1 as referrer
         address t2Addr = factory.deployNewTracker(address(tracker1));
         tracker2 = ReputationTracker(t2Addr);
-        vm.prank(address(factory));
-        tracker2.setTracker(trackerBackend);
 
         // user1 has no entry in tracker2 yet → delegates to tracker1
         ReputationTracker.UserReputation memory rep2 = tracker2.getReputation(user1);
@@ -118,8 +126,6 @@ contract ReputationTrackerTest is Test {
         // Deploy tracker2 with tracker1 as referrer
         address t2Addr = factory.deployNewTracker(address(tracker1));
         tracker2 = ReputationTracker(t2Addr);
-        vm.prank(address(factory));
-        tracker2.setTracker(trackerBackend);
 
         // user2 not in tracker1 or tracker2 → empty reputation
         ReputationTracker.UserReputation memory rep = tracker2.getReputation(user2);
@@ -136,8 +142,6 @@ contract ReputationTrackerTest is Test {
         // Migrate: deploy tracker2 with tracker1 as referrer
         address t2Addr = factory.deployNewTracker(address(tracker1));
         tracker2 = ReputationTracker(t2Addr);
-        vm.prank(address(factory));
-        tracker2.setTracker(trackerBackend);
 
         // Register user1 on tracker2 (new activity after migration)
         tracker2.register(user1);
@@ -147,24 +151,5 @@ contract ReputationTrackerTest is Test {
         ReputationTracker.UserReputation memory rep = tracker2.getReputation(user1);
         assertEq(rep.uploadBytes, tracker2.INITIAL_CREDIT() + 100_000_000);
         assertEq(rep.downloadBytes, 10_000_000);
-    }
-
-    // ── RepFactory ────────────────────────────────────────────────────────────
-
-    function test_Factory_OnlyOwnerCanDeploy() public {
-        vm.prank(address(0xdead));
-        vm.expectRevert(RepFactory.Unauthorized.selector);
-        factory.deployNewTracker(address(0));
-    }
-
-    function test_Factory_AddValidTracker() public {
-        address validTrackerAddr = address(0xABCD);
-        factory.addValidTracker(validTrackerAddr, bytes32(0));
-        assertTrue(factory.isValidTracker(validTrackerAddr));
-
-        // valid tracker can now deploy
-        vm.prank(validTrackerAddr);
-        address newT = factory.deployNewTracker(address(0));
-        assertTrue(newT != address(0));
     }
 }

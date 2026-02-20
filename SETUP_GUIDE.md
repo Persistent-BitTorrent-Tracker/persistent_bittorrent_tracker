@@ -582,20 +582,7 @@ forge verify-contract \
 
 **Problem:** Backend cannot write to contract.
 
-**Solution:** The tracker address in the contract must match your deployer wallet. When using `npm run deploy`, this is handled automatically. If deploying manually, call:
-
-```bash
-cast send --rpc-url $RPC_URL --private-key $PRIVATE_KEY \
-  $REPUTATION_TRACKER_ADDRESS \
-  "setTracker(address)" \
-  <your_deployer_address>
-```
-
-### "Only owner" Error
-
-**Problem:** Non-owner trying to call `setTracker`.
-
-**Solution:** Only the contract OWNER (typically the deploying factory) can call `setTracker`. Use the RepFactory's deployment method or deploy via `npm run deploy`.
+**Solution:** The tracker address in the contract is set permanently at deployment and must match your deployer wallet. When using `npm run deploy` or the RepFactory, the caller automatically becomes the authorized tracker. If the tracker address doesn't match, you need to deploy a new contract via the factory.
 
 ### "Invalid signature" Error
 

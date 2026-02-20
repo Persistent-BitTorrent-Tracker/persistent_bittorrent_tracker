@@ -43,7 +43,6 @@ const provider = new ethers.JsonRpcProvider(rpcUrl);
 
 const TRACKER_ABI = [
   'function REFERRER() external view returns (address)',
-  'function OWNER() external view returns (address)',
   'function tracker() external view returns (address)',
   'function getReputation(address user) external view returns (tuple(uint256 uploadBytes, uint256 downloadBytes, uint256 lastUpdated))',
   'function getRatio(address user) external view returns (uint256)',
@@ -57,14 +56,12 @@ console.log(`Contract: ${contractAddress}\n`);
 
 const contract = new ethers.Contract(contractAddress, TRACKER_ABI, provider);
 
-const [owner, tracker, referrer] = await Promise.all([
-  contract['OWNER']() as Promise<string>,
+const [tracker, referrer] = await Promise.all([
   contract['tracker']() as Promise<string>,
   contract['REFERRER']() as Promise<string>,
 ]);
 
 console.log('Contract Info:');
-console.log(`  OWNER   : ${owner}`);
 console.log(`  tracker : ${tracker}`);
 console.log(
   `  REFERRER: ${referrer === ethers.ZeroAddress ? '(none — genesis contract)' : referrer}`

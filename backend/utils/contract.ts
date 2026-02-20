@@ -6,23 +6,18 @@ const REPUTATION_TRACKER_ABI = [
   // Write
   "function register(address userKey) external returns (bool)",
   "function updateReputation(address user, uint256 uploadDelta, uint256 downloadDelta) external",
-  "function setTracker(address newTracker) external",
 
   // Read
   "function getReputation(address user) external view returns (tuple(uint256 uploadBytes, uint256 downloadBytes, uint256 lastUpdated))",
   "function getRatio(address user) external view returns (uint256)",
+  "function tracker() external view returns (address)",
+  "function REFERRER() external view returns (address)",
 ];
 
 // Minimal ABI for the RepFactory contract.
 const REP_FACTORY_ABI = [
   "function deployNewTracker(address _referrer) external returns (address)",
-  "function addValidTracker(address tracker, bytes32 attestation) external",
-  "function removeValidTracker(address tracker) external",
-  "function isValidTracker(address) external view returns (bool)",
-  "function attestationHash(address) external view returns (bytes32)",
-  "event NewReputationTracker(address indexed newContract, address indexed referrer, address indexed newTracker)",
-  "event TrackerAdded(address indexed tracker, bytes32 attestation)",
-  "event TrackerRemoved(address indexed tracker)",
+  "event NewReputationTracker(address indexed newContract, address indexed referrer, address indexed caller)",
 ];
 
 let _provider: ethers.JsonRpcProvider | null = null;
@@ -132,8 +127,9 @@ export async function updateReputation(
 
 /**
  * Deploy a new ReputationTracker via the RepFactory, pointing its referrer at
- * the old contract so that reputation is preserved.  Returns the address of
- * the newly deployed tracker.
+ * the old contract so that reputation is preserved.  The caller (deployer
+ * wallet) becomes the permanent tracker of the new contract.
+ * Returns the address of the newly deployed tracker.
  */
 export async function migrateFrom(oldContract: string): Promise<string> {
   const factory = getFactory();

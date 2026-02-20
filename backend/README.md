@@ -312,8 +312,7 @@ sequenceDiagram
 
     Op->>Sc: npm run migrate
     Sc->>Fa: deployNewTracker(oldContractAddress)
-    Fa->>NT: new ReputationTracker(referrer=oldContract)
-    Fa->>NT: setTracker(backendWallet)
+    Fa->>NT: new ReputationTracker(tracker=caller, referrer=oldContract)
     Fa-->>Sc: newContractAddress
     Sc-->>Op: "Update REPUTATION_TRACKER_ADDRESS and restart"
 

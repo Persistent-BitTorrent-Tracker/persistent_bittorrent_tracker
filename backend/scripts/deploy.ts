@@ -55,7 +55,7 @@ function loadArtifact(contractName: string): { abi: ethers.InterfaceAbi; bytecod
 
 const REP_FACTORY_ABI = [
   'function deployNewTracker(address _referrer) external returns (address)',
-  'event NewReputationTracker(address indexed newContract, address indexed referrer, address indexed newTracker)',
+  'event NewReputationTracker(address indexed newContract, address indexed referrer, address indexed caller)',
 ];
 
 // ── Deploy ────────────────────────────────────────────────────────────────────

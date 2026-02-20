@@ -2,9 +2,8 @@
 pragma solidity ^0.8.20;
 
 contract ReputationTracker {
-    address public immutable OWNER;
     address public immutable REFERRER; // single-hop inheritance
-    address public tracker; // current authorized tracker backend
+    address public immutable tracker;  // authorized tracker backend (set once, never changes)
 
     struct UserReputation {
         uint256 uploadBytes;
@@ -19,10 +18,9 @@ contract ReputationTracker {
     event UserRegistered(address indexed user, uint256 timestamp);
     event ReputationUpdated(address indexed user, uint256 uploadDelta, uint256 downloadDelta);
 
-    constructor(address _referrer) {
-        OWNER = msg.sender;
+    constructor(address _tracker, address _referrer) {
+        tracker = _tracker;
         REFERRER = _referrer;
-        tracker = msg.sender; // deployer becomes initial tracker
     }
 
     modifier onlyTracker() {
@@ -69,11 +67,5 @@ contract ReputationTracker {
             return (rep.uploadBytes * 1e18) / rep.downloadBytes;
         }
         return ReputationTracker(REFERRER).getRatio(user);
-    }
-
-    // Allow owner to change tracker address (for migration)
-    function setTracker(address newTracker) external {
-        require(msg.sender == OWNER, "Only owner");
-        tracker = newTracker;
     }
 }

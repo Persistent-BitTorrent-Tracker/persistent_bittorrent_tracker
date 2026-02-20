@@ -6,15 +6,14 @@ Solidity smart contracts for the Persistent BitTorrent Tracker System, built wit
 
 ### `ReputationTracker.sol`
 
-The core contract that stores user reputation on-chain. Each instance is linked to a `REFERRER` — the previous tracker contract — enabling seamless reputation portability across migrations.
+The core contract that stores user reputation on-chain. Once deployed, the contract is fully immutable — the tracker address is set at construction and cannot be changed. Each instance is linked to a `REFERRER` — the previous tracker contract — enabling seamless reputation portability across migrations.
 
 **State**
 
 | Variable | Type | Description |
 |---|---|---|
-| `OWNER` | `address immutable` | Deployer address; can call `setTracker` |
 | `REFERRER` | `address immutable` | Previous tracker contract (single-hop delegation) |
-| `tracker` | `address` | Backend signer authorised to write reputation |
+| `tracker` | `address immutable` | Authorized tracker backend (set once at deployment, never changes) |
 | `users` | `mapping(address => UserReputation)` | Per-user reputation store |
 | `INITIAL_CREDIT` | `uint256 constant` | 1 GiB (1,073,741,824 bytes) given on registration |
 
@@ -26,7 +25,7 @@ struct UserReputation {
     uint256 downloadBytes;
     uint256 lastUpdated; // 0 means not registered on this contract
 }
-``` 
+```
 
 **Functions**
 
@@ -36,7 +35,6 @@ struct UserReputation {
 | `updateReputation(address user, uint256 uploadDelta, uint256 downloadDelta)` | `onlyTracker` | Increment upload/download counters |
 | `getReputation(address user)` | `view` | Returns reputation; delegates to `REFERRER` if user not found locally |
 | `getRatio(address user)` | `view` | Returns upload/download ratio scaled by 1e18; delegates to `REFERRER` if needed |
-| `setTracker(address newTracker)` | `OWNER only` | Rotate the authorised tracker backend address |
 
 **Referrer delegation** — `getReputation` and `getRatio` use a single-hop fallback: if the user has no entry in the current contract (`lastUpdated == 0`) and `REFERRER != address(0)`, the call is forwarded to the previous contract. This keeps the frontend API identical across migrations.
 
@@ -44,24 +42,15 @@ struct UserReputation {
 
 ### `RepFactory.sol`
 
-Factory contract that deploys new `ReputationTracker` instances. Gated to the factory owner or addresses that have been explicitly granted valid-tracker status (for future TEE attestation).
+Public, immutable, ownerless factory that deploys new `ReputationTracker` instances. Anyone can call `deployNewTracker` — the caller becomes the permanent tracker of the deployed contract.
 
-**State**
-
-| Variable | Type | Description |
-|---|---|---|
-| `owner` | `address` | Factory owner; can manage tracker registry and deploy new contracts |
-| `isValidTracker` | `mapping(address => bool)` | Authorised tracker addresses |
-| `attestationHash` | `mapping(address => bytes32)` | keccak256 of TEE attestation report per tracker (`bytes32(0)` = owner-added) |
+**Deployed on Sepolia:** `0xF8b0d08B155329CF696F256d77a1Eb2AcA66A1a9`
 
 **Functions**
 
 | Function | Access | Description |
 |---|---|---|
-| `deployNewTracker(address _referrer)` | owner or valid tracker | Deploys a new `ReputationTracker`, wires `_referrer`, emits `NewReputationTracker`. Reverts if `_referrer` is a non-zero EOA. |
-| `addValidTracker(address tracker, bytes32 attestation)` | owner only | Grants a tracker address the right to call `deployNewTracker`. Stores the attestation hash on-chain. |
-| `removeValidTracker(address tracker)` | owner only | Revokes a tracker's authorisation and clears its attestation hash. |
-| `transferOwnership(address newOwner)` | owner only | Transfers factory ownership to a new address. |
+| `deployNewTracker(address _referrer)` | anyone | Deploys a new `ReputationTracker` with the caller as permanent tracker. Reverts if `_referrer` is a non-zero EOA. |
 
 **Events**
 
@@ -69,10 +58,8 @@ Factory contract that deploys new `ReputationTracker` instances. Gated to the fa
 event NewReputationTracker(
     address indexed newContract,
     address indexed referrer,
-    address indexed newTracker
+    address indexed caller
 );
-event TrackerAdded(address indexed tracker, bytes32 attestation);
-event TrackerRemoved(address indexed tracker);
 ```
 
 ---
@@ -85,7 +72,7 @@ contracts/
 │   ├── ReputationTracker.sol   # Core reputation contract
 │   └── RepFactory.sol          # Factory for deploying tracker contracts
 ├── script/
-│   └── DeployPBTS.s.sol        # Basic deployment script (single tracker)
+│   └── DeployPBTS.s.sol        # Deployment script (factory + first tracker)
 └── test/
     └── ReputationTrackerTest.t.sol  # Foundry tests (registration, ratio, migration)
 ```
@@ -106,83 +93,36 @@ forge build
 
 ```bash
 forge test
-# or via make:
-make test
 ```
 
 ### Deploy
 
-**Important:** The Foundry script `DeployPBTS.s.sol` only deploys a single `ReputationTracker` contract without the RepFactory. For full functionality including contract migration, use the backend deployment scripts instead:
+The Foundry script deploys both `RepFactory` and a first `ReputationTracker`:
+
+```bash
+source .env
+forge script script/DeployPBTS.s.sol:DeployPBTS \
+  --rpc-url "$RPC_URL" \
+  --private-key "$DEPLOYER_PRIVATE_KEY" \
+  --broadcast
+```
+
+Or use the backend deployment script for a more guided experience:
 
 ```bash
 cd ../backend
 npm run deploy
 ```
 
-See [SETUP_GUIDE.md](../SETUP_GUIDE.md) for complete deployment instructions.
-
-#### Alternative: Basic Foundry Deployment (No Factory)
-
-1. Create `contracts/.env` from the template and fill in your values:
-
-```env
-# RPC URL for the target network
-RPC_URL=https://api.avax-test.network/ext/bc/C/rpc  # Fuji example
-
-# Deployer wallet (NEVER commit a real key)
-PRIVATE_KEY=0x<your_deployer_private_key>
-
-# Verification (optional)
-ETHERSCAN_API_KEY=
-```
-
-2. Run the deployment script:
-
-```bash
-make deploy
-```
-
-The script deploys a single `ReputationTracker` contract and prints the address:
-
-```
-ReputationTracker: 0x...
-```
-
-**Note:** This method does NOT deploy RepFactory, so migration functionality will not be available.
-
-3. (Optional) Verify on a block explorer:
-
-```bash
-# Set REP_FACTORY_ADDRESS in .env first
-make verify-fuji    # Snowtrace
-make verify-sepolia # Etherscan
-```
-
-### Other Foundry Commands
-
-```bash
-# Format
-forge fmt
-
-# Gas snapshots
-forge snapshot
-
-# Local devnet
-anvil
-
-# On-chain interactions
-cast <subcommand>
-```
-
 ## Migration Flow
 
-When a tracker needs to rotate to a new contract (key rotation, server change, upgrade, etc.):
+When a tracker goes down or needs to rotate, a **new tracker** calls the factory to create a new `ReputationTracker` with a referrer pointing to the old tracker's reputation contract.
 
 ### Sequence Diagram
 
 ```mermaid
 sequenceDiagram
-    participant Op as Operator
+    participant Op as New Tracker
     participant Sc as migrate.ts
     participant Fa as RepFactory
     participant NT as New ReputationTracker
@@ -190,8 +130,7 @@ sequenceDiagram
 
     Op->>Sc: npm run migrate
     Sc->>Fa: deployNewTracker(oldContractAddress)
-    Fa->>NT: new ReputationTracker(referrer=oldContract)
-    Fa->>NT: setTracker(backendWallet)
+    Fa->>NT: new ReputationTracker(tracker=caller, referrer=oldContract)
     Fa-->>Sc: newContractAddress
     Sc-->>Op: "Update REPUTATION_TRACKER_ADDRESS and restart"
 
@@ -214,18 +153,16 @@ sequenceDiagram
 
 ```
 RepFactory.deployNewTracker(oldTrackerAddress)
-    → new ReputationTracker(referrer = oldTrackerAddress)
-    → setTracker(backendWallet)        ← backend can write immediately
+    → new ReputationTracker(tracker = caller, referrer = oldTrackerAddress)
+    → caller is permanently the authorized tracker
     → getReputation(user) delegates to old contract if user has no new-contract entry
 ```
 
+- **Immutable contracts**: once deployed, the tracker address and referrer cannot be changed.
 - **Single-hop delegation**: `getReputation` and `getRatio` check locally first;
   if the user has `lastUpdated == 0`, the call is forwarded to `REFERRER` once.
 - **Zero data migration**: all historical reputation is readable from the new
   contract without copying any state.
-- **Immediate availability**: the backend wallet is set as the authorized tracker
-  on the new contract automatically by `deployNewTracker`.
 
 See `backend/scripts/migrate.ts` and the backend `POST /migrate` endpoint for
 how the operator automates this flow.
-

@@ -6,13 +6,12 @@ import {console} from "forge-std/console.sol";
 import {ReputationTracker} from "../src/ReputationTracker.sol";
 
 /// @notice Deploy ReputationTracker directly (no factory) for local testing.
-/// Deployer becomes both OWNER and tracker — can call register/updateReputation.
+/// Deployer becomes the permanent tracker — can call register/updateReputation.
 contract DeployDirect is Script {
     function run() external {
         vm.startBroadcast();
-        ReputationTracker tracker = new ReputationTracker(address(0));
+        ReputationTracker tracker = new ReputationTracker(msg.sender, address(0));
         console.log("ReputationTracker:", address(tracker));
-        console.log("OWNER (deployer):", tracker.OWNER());
         console.log("tracker (backend):", tracker.tracker());
         vm.stopBroadcast();
     }
