@@ -2,10 +2,6 @@
   "name": "eth-denver-2026",
   "version": "1.0.0",
   "description": "Persistent BitTorrent Tracker System",
-  "workspaces": [
-    "backend",
-    "frontend"
-  ],
   "scripts": {
     "install:all": "bun install",
     "dev:backend": "bun run dev --workspace=backend",

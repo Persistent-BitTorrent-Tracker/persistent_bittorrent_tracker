@@ -26,7 +26,7 @@ struct UserReputation {
     uint256 downloadBytes;
     uint256 lastUpdated; // 0 means not registered on this contract
 }
-```
+``` 
 
 **Functions**
 
@@ -115,36 +115,29 @@ make test
 1. Create `contracts/.env` from the template and fill in your values:
 
 ```env
-# At least one RPC URL is required
-FUJI_RPC=https://api.avax-test.network/ext/bc/C/rpc
-SEPOLIA_RPC=https://rpc.sepolia.org
+# RPC URL for the target network
+RPC_URL=https://api.avax-test.network/ext/bc/C/rpc  # Fuji example
 
 # Deployer wallet (NEVER commit a real key)
 PRIVATE_KEY=0x<your_deployer_private_key>
 
 # Verification (optional)
-SNOWTRACE_API_KEY=
 ETHERSCAN_API_KEY=
 ```
 
-2. Run the deployment script for your target network:
+2. Run the deployment script:
 
 ```bash
-# Avalanche Fuji (chain 43113)
-make deploy-fuji
-
-# Ethereum Sepolia (chain 11155111)
-make deploy-sepolia
+make deploy
 ```
 
-The script prints the deployed addresses:
+The script deploys the `ReputationTracker` contract and prints the address:
 
 ```
-RepFactory: 0x...
-First ReputationTracker: 0x...
+ReputationTracker: 0x...
 ```
 
-Copy these into your backend `.env` as `FACTORY_ADDRESS` and `REPUTATION_TRACKER_ADDRESS`.
+Copy this into your backend `.env` as `REPUTATION_TRACKER_ADDRESS`. The `FACTORY_ADDRESS` is not needed for basic operation.
 
 3. (Optional) Verify on a block explorer:
 

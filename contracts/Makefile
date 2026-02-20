@@ -1,7 +1,7 @@
 # ReputationTracker — Foundry on-chain scripts
-# Supports: Avalanche Fuji (chain 43113) and Ethereum Sepolia (chain 11155111)
+# Supports: Ethereum Sepolia (chain 11155111)
 
-.PHONY: help build test deploy-fuji deploy-sepolia verify-fuji verify-sepolia
+.PHONY: help build test deploy verify
 
 # ─────────────────────────────────────────
 # Help
@@ -14,10 +14,8 @@ help:
 	@echo "  ──────────────────────────────────────────────────────"
 	@echo "  build              Build Solidity contracts"
 	@echo "  test               Run Forge test suite"
-	@echo "  deploy-fuji        Deploy to Avalanche Fuji (chain 43113)"
-	@echo "  deploy-sepolia     Deploy to Ethereum Sepolia (chain 11155111)"
-	@echo "  verify-fuji        Verify contracts on Snowtrace (Fuji)"
-	@echo "  verify-sepolia     Verify contracts on Etherscan (Sepolia)"
+	@echo "  deploy             Deploy to network specified in .env"
+	@echo "  verify             Verify contracts on Etherscan (network specified in .env)"
 	@echo ""
 
 # ─────────────────────────────────────────
@@ -30,35 +28,18 @@ test:
 	forge test -vv
 
 # ─────────────────────────────────────────
-# Forge — Avalanche Fuji deployment
-# ─────────────────────────────────────────
-deploy-fuji:
-	@source .env && forge script script/DeployPBTS.s.sol:DeployPBTS \
-		--rpc-url $$FUJI_RPC \
-		--private-key $$PRIVATE_KEY \
-		--broadcast \
-		--chain-id 43113
-
-verify-fuji:
-	@source .env && forge verify-contract \
-		$$REP_FACTORY_ADDRESS \
-		src/RepFactory.sol:RepFactory \
-		--chain-id 43113 \
-		--etherscan-api-key $$SNOWTRACE_API_KEY
-
-# ─────────────────────────────────────────
 # Forge — Ethereum Sepolia deployment
 # ─────────────────────────────────────────
-deploy-sepolia:
+deploy:
 	@source .env && forge script script/DeployPBTS.s.sol:DeployPBTS \
-		--rpc-url $$SEPOLIA_RPC \
+		--rpc-url $$RPC_URL \
 		--private-key $$PRIVATE_KEY \
 		--broadcast \
-		--chain-id 11155111
+		--chain-id $$CHAIN_ID
 
-verify-sepolia:
+verify:
 	@source .env && forge verify-contract \
 		$$REP_FACTORY_ADDRESS \
 		src/RepFactory.sol:RepFactory \
-		--chain-id 11155111 \
+		--chain-id $$CHAIN_ID \
 		--etherscan-api-key $$ETHERSCAN_API_KEY

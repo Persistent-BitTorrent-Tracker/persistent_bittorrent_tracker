@@ -8,7 +8,7 @@ process.env["REPUTATION_TRACKER_ADDRESS"] =
 process.env["FACTORY_ADDRESS"] =
   "0x0000000000000000000000000000000000000002";
 process.env["ADMIN_SECRET"] = "test-admin-secret";
-process.env["AVALANCHE_FUJI_RPC_URL"] = "http://localhost:8545";
+process.env["RPC_URL"] = "http://localhost:8545";
 process.env["NODE_ENV"] = "test";
 // Use port 0 so each test suite gets a random available port (avoids EADDRINUSE)
 process.env["PORT"] = "0";

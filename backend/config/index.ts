@@ -11,22 +11,19 @@ function requireEnv(key: string, fallback?: string): string {
 /**
  * Resolve the JSON-RPC URL in priority order:
  *   1. RPC_URL          — generic, network-agnostic
- *   2. ETH_SEPOLIA_RPC_URL — Ethereum Sepolia
- *   3. AVALANCHE_FUJI_RPC_URL — Avalanche Fuji (legacy compat)
- *   4. Hard-coded Fuji public endpoint as last-resort fallback
+ *   2. ETH_SEPOLIA_RPC_URL — Ethereum Sepolia (legacy)
  */
 function resolveRpcUrl(): string {
   return (
     process.env["RPC_URL"] ??
     process.env["ETH_SEPOLIA_RPC_URL"] ??
-    process.env["AVALANCHE_FUJI_RPC_URL"] ??
-    "https://api.avax-test.network/ext/bc/C/rpc"
+    "https://rpc.sepolia.org"
   );
 }
 
 /**
  * Infer a sensible default chain ID from the RPC URL when CHAIN_ID is not
- * explicitly set.  Defaults to Fuji (43113) if the URL is unrecognised.
+ * explicitly set.  Defaults to Sepolia (11155111) if the URL is unrecognised.
  */
 function resolveChainId(): number {
   if (process.env["CHAIN_ID"]) {
@@ -34,7 +31,7 @@ function resolveChainId(): number {
   }
   const rpc = resolveRpcUrl().toLowerCase();
   if (rpc.includes("sepolia") || rpc.includes("11155111")) return 11155111;
-  return 43113; // Avalanche Fuji
+  return 11155111; // Ethereum Sepolia
 }
 
 const config = {
