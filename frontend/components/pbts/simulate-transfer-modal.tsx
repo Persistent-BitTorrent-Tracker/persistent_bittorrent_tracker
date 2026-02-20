@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useCallback } from "react"
+import { ethers } from "ethers"
 import {
   Dialog,
   DialogContent,
@@ -22,7 +23,6 @@ import {
 import {
   ArrowUpDown,
   PenTool,
-  Send,
   CheckCircle2,
   Loader2,
   FileCode,
@@ -36,12 +36,16 @@ import {
   shortenAddress,
   FUJI_EXPLORER,
 } from "@/lib/pbts-types"
-import { generateMockInfohash, generateMockTxHash } from "@/lib/pbts-store"
+import { generateMockInfohash } from "@/lib/pbts-store"
+import { reportTransfer } from "@/lib/api"
+import { toast } from "sonner"
 
 interface SimulateTransferModalProps {
   open: boolean
   onOpenChange: (open: boolean) => void
   senderAddress: string
+  /** Sign a message hash with the connected wallet (MetaMask). */
+  signMessage: (message: string | Uint8Array) => Promise<string>
   onTransferComplete: (receiverAddress: string, pieceSize: number) => void
 }
 
@@ -49,6 +53,7 @@ export function SimulateTransferModal({
   open,
   onOpenChange,
   senderAddress,
+  signMessage,
   onTransferComplete,
 }: SimulateTransferModalProps) {
   const [receiver, setReceiver] = useState(TEST_WALLETS[0].address)
@@ -61,27 +66,46 @@ export function SimulateTransferModal({
   const handleSimulate = useCallback(async () => {
     setStep("signing")
 
-    // Simulate MetaMask signing
-    await new Promise((resolve) => setTimeout(resolve, 1800))
+    try {
+      // Build the receipt fields
+      const pieceHash = ethers.keccak256(
+        ethers.toUtf8Bytes(`piece-${infohash}-0`)
+      )
+      const pieceIndex = 0
+      const timestamp = Math.floor(Date.now() / 1000)
 
-    const mockSig =
-      "0x" +
-      Array.from({ length: 130 }, () =>
-        "0123456789abcdef"[Math.floor(Math.random() * 16)]
-      ).join("")
-    setSignature(mockSig)
+      // Compute the receipt hash (must match backend/utils/signatures.ts)
+      const hash = ethers.solidityPackedKeccak256(
+        ["bytes32", "address", "address", "bytes32", "uint256", "uint256", "uint256"],
+        [infohash, senderAddress, receiver, pieceHash, pieceIndex, pieceSize, timestamp]
+      )
 
-    setStep("submitting")
+      // Ask the connected wallet to sign the receipt hash
+      const sig = await signMessage(ethers.getBytes(hash))
+      setSignature(sig)
+      setStep("submitting")
 
-    // Simulate on-chain submission
-    await new Promise((resolve) => setTimeout(resolve, 2200))
+      // Submit to backend
+      const result = await reportTransfer({
+        infohash,
+        sender: senderAddress,
+        receiver,
+        pieceHash,
+        pieceIndex,
+        pieceSize,
+        timestamp,
+        signature: sig,
+      })
 
-    const hash = generateMockTxHash()
-    setTxHash(hash)
-    setStep("confirmed")
-
-    onTransferComplete(receiver, pieceSize)
-  }, [receiver, pieceSize, onTransferComplete])
+      setTxHash(result.senderTxHash)
+      setStep("confirmed")
+      onTransferComplete(receiver, pieceSize)
+    } catch (err: unknown) {
+      const errMsg = err instanceof Error ? err.message : String(err)
+      toast.error("Transfer failed", { description: errMsg })
+      setStep("idle")
+    }
+  }, [receiver, pieceSize, infohash, senderAddress, signMessage, onTransferComplete])
 
   const handleClose = () => {
     setStep("idle")

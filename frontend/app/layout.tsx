@@ -1,11 +1,8 @@
 import type { Metadata, Viewport } from 'next'
-import { Geist, Geist_Mono } from 'next/font/google'
 import { Analytics } from '@vercel/analytics/next'
 import { Toaster } from 'sonner'
+import { ThemeProvider } from '@/components/theme-provider'
 import './globals.css'
-
-const _geist = Geist({ subsets: ["latin"] });
-const _geistMono = Geist_Mono({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
   title: 'PBTS - Persistent BitTorrent Tracker System',
@@ -30,7 +27,10 @@ export const metadata: Metadata = {
 }
 
 export const viewport: Viewport = {
-  themeColor: '#0f1117',
+  themeColor: [
+    { media: '(prefers-color-scheme: light)', color: '#ffffff' },
+    { media: '(prefers-color-scheme: dark)', color: '#0f1117' },
+  ],
   width: 'device-width',
   initialScale: 1,
 }
@@ -43,18 +43,18 @@ export default function RootLayout({
   return (
     <html lang="en" suppressHydrationWarning>
       <body className="font-sans antialiased bg-background text-foreground" suppressHydrationWarning>
-        {children}
-        <Toaster
-          theme="dark"
-          position="bottom-right"
-          toastOptions={{
-            style: {
-              background: 'oklch(0.17 0.005 260)',
-              border: '1px solid oklch(0.28 0.008 260)',
-              color: 'oklch(0.95 0 0)',
-            },
-          }}
-        />
+        <ThemeProvider
+          attribute="class"
+          defaultTheme="dark"
+          enableSystem
+          disableTransitionOnChange
+        >
+          {children}
+          <Toaster
+            theme="system"
+            position="bottom-right"
+          />
+        </ThemeProvider>
         <Analytics />
       </body>
     </html>

@@ -15,10 +15,12 @@ import { formatBytes, shortenAddress } from "@/lib/pbts-types"
 import {
   createInitialReputation,
   simulateTransfer,
-  simulateAnnounce,
   createActivity,
   getContractInfo,
+  generateMockInfohash,
 } from "@/lib/pbts-store"
+import { announce as apiAnnounce } from "@/lib/api"
+import { useWallet } from "@/hooks/useWallet"
 
 interface DashboardProps {
   address: string
@@ -26,6 +28,7 @@ interface DashboardProps {
 }
 
 export function Dashboard({ address, onDisconnect }: DashboardProps) {
+  const wallet = useWallet()
   const [activeTab, setActiveTab] = useState<DashboardTab>("dashboard")
   const [reputation, setReputation] = useState<UserReputation>(
     createInitialReputation(address)
@@ -63,38 +66,88 @@ export function Dashboard({ address, onDisconnect }: DashboardProps) {
     setIsAnnouncing(true)
     setAnnounceResult(null)
 
-    // Simulate announce call
-    await new Promise((resolve) => setTimeout(resolve, 1500))
+    const infohash = generateMockInfohash()
+    const message = `PBTS announce ${infohash} started by ${address} at ${Date.now()}`
 
-    const result = simulateAnnounce(reputation)
-    setAnnounceResult(result)
+    try {
+      const signature = await wallet.signMessage(message)
+      const result = await apiAnnounce(address, infohash, "started", message, signature)
 
-    const activity = createActivity(
-      "announce",
-      result.status === "allowed"
-        ? `Announce succeeded - ${result.peers.length} peers returned`
-        : `Announce blocked - insufficient ratio`,
-      result.status === "allowed" ? "success" : "error"
-    )
-    setActivities((prev) => [activity, ...prev])
+      const announceDisplay: AnnounceResult = {
+        status: result.status,
+        peers:
+          result.status === "allowed"
+            ? result.peers.map((p) => ({
+                ip: p.peerId ?? p.address.slice(0, 10),
+                port: 6881,
+              }))
+            : [],
+        ratio:
+          result.ratio !== null
+            ? result.ratio
+            : Infinity,
+        message: result.message,
+      }
 
-    if (result.status === "allowed") {
-      toast.success("Access Granted!", {
-        description: `${result.peers.length} peers available for download`,
-      })
-    } else {
-      toast.error("Access Denied", {
-        description: result.message,
-      })
+      setAnnounceResult(announceDisplay)
+
+      const activity = createActivity(
+        "announce",
+        result.status === "allowed"
+          ? `Announce succeeded — ${result.peerCount} peers returned`
+          : `Announce blocked — insufficient ratio`,
+        result.status === "allowed" ? "success" : "error"
+      )
+      setActivities((prev) => [activity, ...prev])
+
+      if (result.status === "allowed") {
+        // Update local reputation from backend data
+        setReputation((prev) => ({
+          ...prev,
+          uploadBytes: parseInt(result.uploadBytes, 10),
+          downloadBytes: parseInt(result.downloadBytes, 10),
+          ratio:
+            result.ratio !== null
+              ? result.ratio
+              : Infinity,
+        }))
+        toast.success("Access Granted!", {
+          description: `${result.peerCount} peers available for download`,
+        })
+      } else {
+        toast.error("Access Denied", {
+          description: result.message,
+        })
+      }
+    } catch (err: unknown) {
+      const errMsg = err instanceof Error ? err.message : String(err)
+      // If backend is unavailable, fall back to local simulation
+      if (errMsg.includes("Failed to fetch") || errMsg.includes("fetch")) {
+        toast.warning("Backend unavailable — showing demo result", {
+          description: "Start the backend server to use live data.",
+        })
+        const { simulateAnnounce } = await import("@/lib/pbts-store")
+        const result = simulateAnnounce(reputation)
+        setAnnounceResult(result)
+        const activity = createActivity(
+          "announce",
+          result.status === "allowed"
+            ? `Announce succeeded (demo) — ${result.peers.length} peers`
+            : `Announce blocked (demo)`,
+          result.status === "allowed" ? "success" : "error"
+        )
+        setActivities((prev) => [activity, ...prev])
+      } else {
+        toast.error("Announce failed", { description: errMsg })
+      }
     }
 
     setIsAnnouncing(false)
-  }, [reputation])
+  }, [address, reputation, wallet])
 
   const handleServerRestart = useCallback(async () => {
     setIsRestarting(true)
 
-    // Simulate server going down
     toast.info("Server shutting down...", {
       description: "Simulating tracker restart",
     })
@@ -107,14 +160,14 @@ export function Dashboard({ address, onDisconnect }: DashboardProps) {
 
     await new Promise((resolve) => setTimeout(resolve, 1500))
 
-    // Server comes back - reputation unchanged (from blockchain)
+    // Server comes back — reputation unchanged (from blockchain)
     toast.success("Server restarted!", {
       description: "Reputation restored from blockchain - no data loss!",
     })
 
     const activity = createActivity(
       "register",
-      `Server restarted - reputation persisted via blockchain`
+      `Server restarted — reputation persisted via blockchain`
     )
     setActivities((prev) => [activity, ...prev])
     setIsRestarting(false)
@@ -127,7 +180,7 @@ export function Dashboard({ address, onDisconnect }: DashboardProps) {
 
       const activity = createActivity(
         "transfer",
-        `Downloaded ${formatBytes(size)} - ${fileName}`
+        `Downloaded ${formatBytes(size)} — ${fileName}`
       )
       setActivities((prev) => [activity, ...prev])
     },
@@ -146,7 +199,7 @@ export function Dashboard({ address, onDisconnect }: DashboardProps) {
 
     const activity = createActivity(
       "migration",
-      `Migrated to new contract - reputation preserved`
+      `Migrated to new contract — reputation preserved`
     )
     setActivities((prev) => [activity, ...prev])
 
@@ -154,6 +207,11 @@ export function Dashboard({ address, onDisconnect }: DashboardProps) {
       description: "Reputation carried over to new contract",
     })
   }, [])
+
+  const signMessage = useCallback(
+    (message: string | Uint8Array): Promise<string> => wallet.signMessage(message),
+    [wallet]
+  )
 
   return (
     <div className="min-h-screen flex flex-col bg-background">
@@ -228,6 +286,7 @@ export function Dashboard({ address, onDisconnect }: DashboardProps) {
         open={transferModalOpen}
         onOpenChange={setTransferModalOpen}
         senderAddress={address}
+        signMessage={signMessage}
         onTransferComplete={handleTransferComplete}
       />
     </div>
