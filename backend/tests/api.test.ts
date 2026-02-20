@@ -271,7 +271,7 @@ describe("POST /announce", () => {
     const res = await request(app).post("/announce").send(body);
     expect(res.status).toBe(200);
     expect(res.body.status).toBe("allowed");
-    expect(res.body.peers.length).toBeGreaterThan(0);
+    expect(Array.isArray(res.body.peers)).toBe(true);
   });
 
   it("returns 200 with peers for user with no downloads (infinite ratio)", async () => {

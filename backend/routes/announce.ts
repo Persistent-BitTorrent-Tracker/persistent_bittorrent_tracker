@@ -8,17 +8,30 @@ import {
   getUserRatio,
   formatRatio,
 } from "../utils/contract";
+import { peerRegistry } from "../tracker/peerRegistry";
 
-// ── Mock peer swarm ────────────────────────────────────────────────────────
-// For the MVP demo we return a static list of simulated peers when access is granted.
-const MOCK_PEERS = [
-  { ip: "192.0.2.1", port: 6881 },
-  { ip: "192.0.2.2", port: 6882 },
-  { ip: "192.0.2.3", port: 6883 },
-];
-
-// In-memory swarm: infohash → Set of active user addresses.
+// In-memory swarm: infohash → Set of active user addresses (lowercase).
 const swarm = new Map<string, Set<string>>();
+
+/**
+ * Build a peer list from the in-memory swarm, excluding the requesting user.
+ * Falls back to a reference to the BT tracker port when no connection info
+ * is available (peers connect via the BT tracker, not via this JSON API).
+ */
+function getSwarmPeers(
+  infohash: string,
+  excludeAddress: string
+): Array<{ address: string; peerId: string | null }> {
+  const members = swarm.get(infohash);
+  if (!members) return [];
+
+  return Array.from(members)
+    .filter((addr) => addr !== excludeAddress.toLowerCase())
+    .map((addr) => ({
+      address: addr,
+      peerId: peerRegistry.getPeerId(addr) ?? null,
+    }));
+}
 
 /**
  * POST /announce
@@ -128,12 +141,16 @@ export async function announceHandler(req: Request, res: Response): Promise<void
       return;
     }
 
+    const peerList = getSwarmPeers(infohash, userAddress);
+
     res.status(200).json({
       status: "allowed",
-      peers: MOCK_PEERS,
+      peers: peerList,
+      peerCount: peerList.length,
       ratio: isFinite(ratio) ? ratio : null,
       uploadBytes: reputation.uploadBytes.toString(),
       downloadBytes: reputation.downloadBytes.toString(),
+      trackerPort: config.trackerPort,
       message: "Access granted. Happy seeding!",
     });
   } catch (err) {

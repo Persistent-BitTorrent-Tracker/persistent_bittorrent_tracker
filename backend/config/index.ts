@@ -71,6 +71,9 @@ const config = {
     10
   ),
 
+  /** Port for the BitTorrent tracker (HTTP announce + WebSocket). */
+  trackerPort: parseInt(process.env["TRACKER_PORT"] ?? "8000", 10),
+
   /**
    * Secret token that must be supplied in the Authorization header when
    * calling the /migrate admin endpoint.  Keep this out of version control.
