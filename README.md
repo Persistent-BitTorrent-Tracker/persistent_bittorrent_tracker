@@ -25,32 +25,27 @@ PBTS addresses these weaknesses through:
 ## Project Structure
 
 ```
-eth_denver_2026/
-├── contracts/          # Solidity smart contracts (ReputationTracker.sol)
-│   ├── src/           # Contract source files
+persistent_bittorrent_tracker/
+├── contracts/          # Solidity smart contracts (Foundry)
+│   ├── src/           # ReputationTracker.sol, RepFactory.sol
 │   ├── test/          # Foundry tests
-│   └── script/        # Deployment scripts
-├── backend/           # Node.js + Express tracker server
+│   └── script/        # Deployment scripts (DeployPBTS.s.sol)
+├── backend/           # Bun + Express tracker server
 │   ├── routes/        # API endpoints (register, report, announce)
 │   ├── utils/         # Signature verification, contract interaction
-│   └── config/        # Configuration files
-├── frontend/          # React + Vite + TailwindCSS dashboard
-│   └── src/
-│       ├── components/  # UI components
-│       ├── hooks/       # React hooks for wallet and contract
-│       └── utils/       # Helper functions
-├── dev-scripts/       # Utility scripts for development and deployment
+│   ├── config/        # Typed config (env resolution, chain ID)
+│   └── tests/         # Jest test suites (api, signatures)
+├── frontend/          # React + Vite + TailwindCSS dashboard (separate developer)
 └── agents/            # Development guidelines and best practices
-
 ```
 
 ## Technology Stack
 
-- **Smart Contracts**: Solidity + Foundry
-- **Backend**: Bun + Express.js
+- **Smart Contracts**: Solidity 0.8.20 + Foundry
+- **Backend**: Bun / Node.js 18+ with Express.js and ethers.js v6
 - **Frontend**: React + Vite + TailwindCSS
 - **Cryptography**: ECDSA (secp256k1) via ethers.js
-- **Blockchain**: Avalanche Fuji testnet (fast finality, low fees)
+- **Blockchain**: Ethereum Sepolia (chain 11155111) or Avalanche Fuji (chain 43113)
 
 ## MVP Scope (4-Day Hackathon)
 
@@ -62,10 +57,9 @@ eth_denver_2026/
 
 **Intentional Simplifications:**
 - Manual transfer simulation (no real P2P integration)
-- Single smart contract (no factory pattern)
 - Basic ECDSA signatures (no BLS aggregation)
 - Simulated peer swarm (no real BitTorrent protocol)
-- No TEE implementation
+- No TEE implementation (attestation hash placeholder in RepFactory)
 
 ## Getting Started
 
@@ -82,8 +76,8 @@ eth_denver_2026/
 git clone https://github.com/faulknerpearce/eth_denver_2026.git
 cd eth_denver_2026
 
-# Install dependencies
-npm install
+# Install dependencies (Bun workspaces)
+bun install
 
 # Copy example environment and fill in values
 cp .env.example backend/.env
@@ -97,11 +91,12 @@ cd contracts
 # Build contracts
 forge build
 
-# Run tests (including migration tests)
+# Run tests (12 tests: registration, ratios, migration, factory)
 forge test
 
-# Deploy RepFactory + first ReputationTracker to Avalanche Fuji
-make deploy-fuji
+# Deploy RepFactory + first ReputationTracker
+make deploy-fuji      # Avalanche Fuji (chain 43113)
+make deploy-sepolia   # Ethereum Sepolia (chain 11155111)
 # Outputs:
 #   RepFactory: 0x...
 #   First ReputationTracker: 0x...
@@ -199,18 +194,20 @@ accessible through the new contract's single-hop referrer delegation.
 
 ## Documentation
 
-- **[MVP Implementation Plan](./MVP_IMPLEMENTATION_PLAN.md)** - Detailed specifications
+- **[MVP Implementation Plan](./MVP_PLAN_A.md)** - Detailed specifications
 - **[Contracts README](./contracts/README.md)** - Smart contract development guide
 - **[Backend README](./backend/README.md)** - Tracker server documentation
 - **[Frontend README](./frontend/README.md)** - Dashboard development guide
 
 ## Key Features
 
-✅ Persistent on-chain reputation  
-✅ Cryptographic transfer receipts  
-✅ Reputation-based access control  
-✅ Zero local state (stateless server)  
-✅ Censorship-resistant architecture  
+- Persistent on-chain reputation
+- Cryptographic transfer receipts (EIP-191 signed)
+- Reputation-based access control
+- Zero local state (stateless server)
+- Censorship-resistant architecture
+- Factory-based contract migration with single-hop referrer delegation
+- Admin-protected `/migrate` endpoint for seamless tracker rotation
 
 ## Demo Flow
 
