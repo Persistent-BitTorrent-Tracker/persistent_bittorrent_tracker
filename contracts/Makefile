@@ -29,4 +29,4 @@ test:
 # Forge — on-chain scripts
 # ─────────────────────────────────────────
 deploy-fuji:
-	@source .env && forge script script/Counter.s.sol:CounterScript --rpc-url $$FUJI_RPC --private-key $$PRIVATE_KEY --broadcast
+	@source .env && forge script script/DeployPBTS.s.sol:DeployPBTS --rpc-url $$FUJI_RPC --private-key $$PRIVATE_KEY --broadcast
