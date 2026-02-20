@@ -1,4 +1,3 @@
-"use client"
 
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -22,6 +21,7 @@ interface DashboardHeaderProps {
   activeTab: DashboardTab
   onTabChange: (tab: DashboardTab) => void
   onDisconnect: () => void
+  backendOnline: boolean | null
 }
 
 export function DashboardHeader({
@@ -30,6 +30,7 @@ export function DashboardHeader({
   activeTab,
   onTabChange,
   onDisconnect,
+  backendOnline,
 }: DashboardHeaderProps) {
   const [copied, setCopied] = useState(false)
   const { theme, setTheme } = useTheme()
@@ -89,6 +90,28 @@ export function DashboardHeader({
           >
             <span className="h-1.5 w-1.5 rounded-full bg-primary mr-1.5 animate-pulse" />
             {network}
+          </Badge>
+
+          <Badge
+            variant="outline"
+            className={`text-xs font-mono hidden sm:flex ${
+              backendOnline === null
+                ? "border-border text-muted-foreground"
+                : backendOnline
+                  ? "border-success/30 text-success bg-success/5"
+                  : "border-destructive/30 text-destructive bg-destructive/5"
+            }`}
+          >
+            <span
+              className={`h-1.5 w-1.5 rounded-full mr-1.5 ${
+                backendOnline === null
+                  ? "bg-muted-foreground animate-pulse"
+                  : backendOnline
+                    ? "bg-success"
+                    : "bg-destructive"
+              }`}
+            />
+            {backendOnline === null ? "checking..." : backendOnline ? "backend online" : "backend offline"}
           </Badge>
 
           <button

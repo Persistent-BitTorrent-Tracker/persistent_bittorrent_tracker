@@ -1,11 +1,11 @@
 /**
  * Backend API client for PBTS.
  *
- * Reads the backend URL from NEXT_PUBLIC_BACKEND_URL (defaults to localhost:3001).
+ * Reads the backend URL from VITE_BACKEND_URL (defaults to localhost:3001).
  */
 
 const BASE_URL =
-  process.env["NEXT_PUBLIC_BACKEND_URL"] ?? "http://localhost:3001"
+  import.meta.env.VITE_BACKEND_URL ?? "http://localhost:3001"
 
 // ── Types matching backend response shapes ────────────────────────────────
 
@@ -151,4 +151,36 @@ export async function checkHealth(): Promise<boolean> {
   } catch {
     return false
   }
+}
+
+export interface MigrateResponse {
+  success: boolean
+  oldContract: string
+  newContract: string
+  message: string
+}
+
+/**
+ * Trigger a contract migration via POST /migrate (admin only).
+ *
+ * Requires the admin secret set in VITE_ADMIN_SECRET.
+ */
+export async function migrateContract(
+  oldContract: string,
+  adminSecret: string
+): Promise<MigrateResponse> {
+  const res = await fetch(`${BASE_URL}/migrate`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${adminSecret}`,
+    },
+    body: JSON.stringify({ oldContract }),
+  })
+  const data = await res.json()
+  if (!res.ok) {
+    const message = (data as ApiError).error ?? `HTTP ${res.status}`
+    throw new Error(message)
+  }
+  return data as MigrateResponse
 }

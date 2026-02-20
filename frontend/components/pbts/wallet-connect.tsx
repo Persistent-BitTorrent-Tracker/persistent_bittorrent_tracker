@@ -1,4 +1,3 @@
-"use client"
 
 import { useTheme } from "next-themes"
 import { Button } from "@/components/ui/button"
@@ -18,7 +17,7 @@ import { registerUser } from "@/lib/api"
 import { useState } from "react"
 import { toast } from "sonner"
 
-const CHAIN_ID = parseInt(process.env["NEXT_PUBLIC_CHAIN_ID"] ?? "43113", 10)
+const CHAIN_ID = parseInt(import.meta.env.VITE_CHAIN_ID ?? "43113", 10)
 const CHAIN_HEX = `0x${CHAIN_ID.toString(16)}`
 const IS_FUJI = CHAIN_ID === 43113
 

@@ -1,6 +1,5 @@
-"use client"
 
-import { useState, useCallback } from "react"
+import { useState, useCallback, useEffect } from "react"
 import { toast } from "sonner"
 import { DashboardHeader, type DashboardTab } from "./dashboard-header"
 import { MigrationBanner } from "./migration-banner"
@@ -11,7 +10,7 @@ import { AnnounceCard } from "./announce-card"
 import { ActivityFeed } from "./activity-feed"
 import { FilesBrowser } from "./files-browser"
 import type { UserReputation, ActivityItem, AnnounceResult, ContractInfo } from "@/lib/pbts-types"
-import { formatBytes, shortenAddress } from "@/lib/pbts-types"
+import { formatBytes, shortenAddress, MOCK_CONTRACT_ADDRESS } from "@/lib/pbts-types"
 import {
   createInitialReputation,
   simulateTransfer,
@@ -19,7 +18,7 @@ import {
   getContractInfo,
   generateMockInfohash,
 } from "@/lib/pbts-store"
-import { announce as apiAnnounce } from "@/lib/api"
+import { announce as apiAnnounce, checkHealth, migrateContract } from "@/lib/api"
 import { useWallet } from "@/hooks/useWallet"
 
 interface DashboardProps {
@@ -43,6 +42,12 @@ export function Dashboard({ address, onDisconnect }: DashboardProps) {
   const [transferModalOpen, setTransferModalOpen] = useState(false)
   const [isRestarting, setIsRestarting] = useState(false)
   const [isAnnouncing, setIsAnnouncing] = useState(false)
+  const [backendOnline, setBackendOnline] = useState<boolean | null>(null)
+
+  // Check backend health on mount
+  useEffect(() => {
+    checkHealth().then(setBackendOnline)
+  }, [])
 
   const handleTransferComplete = useCallback(
     (receiverAddress: string, pieceSize: number) => {
@@ -147,6 +152,7 @@ export function Dashboard({ address, onDisconnect }: DashboardProps) {
 
   const handleServerRestart = useCallback(async () => {
     setIsRestarting(true)
+    setBackendOnline(null)
 
     toast.info("Server shutting down...", {
       description: "Simulating tracker restart",
@@ -161,6 +167,9 @@ export function Dashboard({ address, onDisconnect }: DashboardProps) {
     await new Promise((resolve) => setTimeout(resolve, 1500))
 
     // Server comes back — reputation unchanged (from blockchain)
+    const online = await checkHealth()
+    setBackendOnline(online)
+
     toast.success("Server restarted!", {
       description: "Reputation restored from blockchain - no data loss!",
     })
@@ -188,25 +197,42 @@ export function Dashboard({ address, onDisconnect }: DashboardProps) {
   )
 
   const handleMigrate = useCallback(async () => {
+    const adminSecret = import.meta.env.VITE_ADMIN_SECRET
+    if (!adminSecret) {
+      toast.error("Admin secret not configured", {
+        description: "Set VITE_ADMIN_SECRET in .env.local to use this feature.",
+      })
+      return
+    }
+
     toast.info("Initiating contract migration...", {
       description: "Deploying new contract via RepFactory",
     })
 
-    await new Promise((resolve) => setTimeout(resolve, 2500))
+    try {
+      const result = await migrateContract(MOCK_CONTRACT_ADDRESS, adminSecret)
+      const newInfo: ContractInfo = {
+        address: result.newContract,
+        migratedFrom: result.oldContract,
+        network: contractInfo.network,
+        blockNumber: contractInfo.blockNumber,
+      }
+      setContractInfo(newInfo)
 
-    const newInfo = getContractInfo(true)
-    setContractInfo(newInfo)
+      const activity = createActivity(
+        "migration",
+        `Migrated to ${result.newContract.slice(0, 10)}... — reputation preserved`
+      )
+      setActivities((prev) => [activity, ...prev])
 
-    const activity = createActivity(
-      "migration",
-      `Migrated to new contract — reputation preserved`
-    )
-    setActivities((prev) => [activity, ...prev])
-
-    toast.success("Migration complete!", {
-      description: "Reputation carried over to new contract",
-    })
-  }, [])
+      toast.success("Migration complete!", {
+        description: "Reputation carried over to new contract",
+      })
+    } catch (err: unknown) {
+      const errMsg = err instanceof Error ? err.message : String(err)
+      toast.error("Migration failed", { description: errMsg })
+    }
+  }, [contractInfo])
 
   const signMessage = useCallback(
     (message: string | Uint8Array): Promise<string> => wallet.signMessage(message),
@@ -221,6 +247,7 @@ export function Dashboard({ address, onDisconnect }: DashboardProps) {
         activeTab={activeTab}
         onTabChange={setActiveTab}
         onDisconnect={onDisconnect}
+        backendOnline={backendOnline}
       />
 
       {/* Mobile tab switcher */}

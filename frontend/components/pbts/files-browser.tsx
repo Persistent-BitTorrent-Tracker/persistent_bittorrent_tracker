@@ -1,4 +1,3 @@
-"use client"
 
 import { useState, useMemo, useCallback, useRef } from "react"
 import { toast } from "sonner"
