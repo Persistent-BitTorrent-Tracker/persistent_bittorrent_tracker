@@ -224,6 +224,64 @@ accessible through the new contract's single-hop referrer delegation.
 3. **Announce**: Request peer list → Access granted/denied based on ratio
 4. **Persistence**: Kill server → Restart → Reputation unchanged
 
+## How to Run Demo
+
+This section covers the full end-to-end demo setup for ETH Denver 2026.
+
+### Prerequisites
+
+- Node.js 18+ (or Bun)
+- MetaMask browser extension
+- Contracts deployed to Avalanche Fuji (see [Smart Contract Deployment](#smart-contract-deployment))
+- Backend `.env` configured with `REPUTATION_TRACKER_ADDRESS`, `FACTORY_ADDRESS`, `DEPLOYER_PRIVATE_KEY`, `ADMIN_SECRET`, `RPC_URL`
+
+### 1. Start the Backend
+
+```bash
+cd backend
+cp ../.env.example .env   # fill in your values
+bun run dev               # starts on http://localhost:3001
+```
+
+### 2. Start the Frontend
+
+```bash
+cd frontend
+npm install
+# Optional: set VITE_API_URL if backend runs on a different port
+npm run dev               # starts on http://localhost:5173
+```
+
+Open `http://localhost:5173` in your browser.
+
+### 3. Live Demo Script (~3–5 minutes)
+
+| Step | Action | Expected Result |
+|------|--------|-----------------|
+| **1. Connect** | Click "Connect MetaMask", approve in MetaMask | Dashboard loads, address shown in header |
+| **2. Switch Network** | Click "Switch to Fuji" if prompted | Network badge turns green |
+| **3. Register** | Click "Register" button in the yellow banner | Toast: "Registered! Initial credit: 1 GB" |
+| **4. Simulate Transfer** | Click "Simulate Transfer" → choose piece size → sign in MetaMask | Ratio updates, activity feed shows tx link |
+| **5. Announce (allowed)** | Click "Announce" | Green "Access Granted" card with peer list |
+| **6. Server restart** | Kill backend (`Ctrl+C`) and restart (`bun run dev`) → refresh page | Ratio and stats are identical — persisted on-chain |
+| **7. Migration** | Click "Migrate (Admin)" → enter `ADMIN_SECRET` | Blue migration banner shows old → new contract address; ratio preserved |
+| **8. Announce (blocked)** | Switch MetaMask to a fresh wallet with no uploads → click "Announce" | Red "Access Denied" card with deficit message |
+
+### 4. Build for Production (Vercel / Netlify)
+
+```bash
+cd frontend
+npm run build             # output in frontend/dist/
+```
+
+Deploy the `frontend/dist/` directory to Vercel or Netlify. Set the environment variable:
+
+```
+VITE_API_URL=https://your-backend-url.com
+VITE_CONTRACT_ADDRESS=0x<ReputationTracker address>
+VITE_RPC_URL=https://api.avax-test.network/ext/bc/C/rpc
+```
+
 ## Security Considerations
 
 ⚠️ **NEVER commit**:
