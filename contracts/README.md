@@ -46,14 +46,24 @@ struct UserReputation {
 
 Factory contract that deploys new `ReputationTracker` instances. Gated to the factory owner or addresses that have been explicitly granted valid-tracker status (for future TEE attestation).
 
+**State**
+
+| Variable | Type | Description |
+|---|---|---|
+| `owner` | `address` | Factory owner; can manage tracker registry and deploy new contracts |
+| `isValidTracker` | `mapping(address => bool)` | Authorised tracker addresses |
+| `attestationHash` | `mapping(address => bytes32)` | keccak256 of TEE attestation report per tracker (`bytes32(0)` = owner-added) |
+
 **Functions**
 
 | Function | Access | Description |
 |---|---|---|
-| `deployNewTracker(address _referrer)` | owner or valid tracker | Deploys a new `ReputationTracker`, wires `_referrer`, emits `NewReputationTracker` |
-| `addValidTracker(address tracker)` | owner only | Grants a tracker address the right to call `deployNewTracker` |
+| `deployNewTracker(address _referrer)` | owner or valid tracker | Deploys a new `ReputationTracker`, wires `_referrer`, emits `NewReputationTracker`. Reverts if `_referrer` is a non-zero EOA. |
+| `addValidTracker(address tracker, bytes32 attestation)` | owner only | Grants a tracker address the right to call `deployNewTracker`. Stores the attestation hash on-chain. |
+| `removeValidTracker(address tracker)` | owner only | Revokes a tracker's authorisation and clears its attestation hash. |
+| `transferOwnership(address newOwner)` | owner only | Transfers factory ownership to a new address. |
 
-**Event**
+**Events**
 
 ```solidity
 event NewReputationTracker(
@@ -61,6 +71,8 @@ event NewReputationTracker(
     address indexed referrer,
     address indexed newTracker
 );
+event TrackerAdded(address indexed tracker, bytes32 attestation);
+event TrackerRemoved(address indexed tracker);
 ```
 
 ---
@@ -98,24 +110,31 @@ forge test
 make test
 ```
 
-### Deploy to Avalanche Fuji
+### Deploy
 
-1. Copy the root `.env.example` to `contracts/.env` and fill in your values:
+1. Create `contracts/.env` from the template and fill in your values:
 
 ```env
+# At least one RPC URL is required
 FUJI_RPC=https://api.avax-test.network/ext/bc/C/rpc
+SEPOLIA_RPC=https://rpc.sepolia.org
+
+# Deployer wallet (NEVER commit a real key)
 PRIVATE_KEY=0x<your_deployer_private_key>
+
+# Verification (optional)
+SNOWTRACE_API_KEY=
+ETHERSCAN_API_KEY=
 ```
 
-2. Run the deployment script:
+2. Run the deployment script for your target network:
 
 ```bash
+# Avalanche Fuji (chain 43113)
 make deploy-fuji
-# or directly:
-forge script script/DeployPBTS.s.sol:DeployPBTS \
-  --rpc-url $FUJI_RPC \
-  --private-key $PRIVATE_KEY \
-  --broadcast
+
+# Ethereum Sepolia (chain 11155111)
+make deploy-sepolia
 ```
 
 The script prints the deployed addresses:
@@ -126,6 +145,14 @@ First ReputationTracker: 0x...
 ```
 
 Copy these into your backend `.env` as `FACTORY_ADDRESS` and `REPUTATION_TRACKER_ADDRESS`.
+
+3. (Optional) Verify on a block explorer:
+
+```bash
+# Set REP_FACTORY_ADDRESS in .env first
+make verify-fuji    # Snowtrace
+make verify-sepolia # Etherscan
+```
 
 ### Other Foundry Commands
 
