@@ -14,11 +14,14 @@ contract ReputationTrackerTest is Test {
     address public user1 = address(0x1001);
     address public user2 = address(0x1002);
 
+    bytes32 constant IID_1 = keccak256("tracker-instance-1");
+    bytes32 constant IID_2 = keccak256("tracker-instance-2");
+
     function setUp() public {
         factory = new RepFactory();
 
         // Deploy first tracker (no referrer)
-        address t1Addr = factory.deployNewTracker(address(0));
+        address t1Addr = factory.deployNewTracker(IID_1, address(0));
         tracker1 = ReputationTracker(t1Addr);
 
         // The factory is the owner of tracker1; set the test contract as the tracker
@@ -98,7 +101,7 @@ contract ReputationTrackerTest is Test {
         uint256 expectedDownload = rep1.downloadBytes;
 
         // Deploy tracker2 with tracker1 as referrer
-        address t2Addr = factory.deployNewTracker(address(tracker1));
+        address t2Addr = factory.deployNewTracker(IID_2, address(tracker1));
         tracker2 = ReputationTracker(t2Addr);
         vm.prank(address(factory));
         tracker2.setTracker(trackerBackend);
@@ -116,7 +119,7 @@ contract ReputationTrackerTest is Test {
 
     function test_Migration_NewUserNotInOld() public {
         // Deploy tracker2 with tracker1 as referrer
-        address t2Addr = factory.deployNewTracker(address(tracker1));
+        address t2Addr = factory.deployNewTracker(IID_2, address(tracker1));
         tracker2 = ReputationTracker(t2Addr);
         vm.prank(address(factory));
         tracker2.setTracker(trackerBackend);
@@ -134,7 +137,7 @@ contract ReputationTrackerTest is Test {
         tracker1.updateReputation(user1, 200_000_000, 50_000_000);
 
         // Migrate: deploy tracker2 with tracker1 as referrer
-        address t2Addr = factory.deployNewTracker(address(tracker1));
+        address t2Addr = factory.deployNewTracker(IID_2, address(tracker1));
         tracker2 = ReputationTracker(t2Addr);
         vm.prank(address(factory));
         tracker2.setTracker(trackerBackend);
@@ -154,7 +157,7 @@ contract ReputationTrackerTest is Test {
     function test_Factory_OnlyOwnerCanDeploy() public {
         vm.prank(address(0xdead));
         vm.expectRevert(RepFactory.Unauthorized.selector);
-        factory.deployNewTracker(address(0));
+        factory.deployNewTracker(bytes32(0), address(0));
     }
 
     function test_Factory_AddValidTracker() public {
@@ -164,7 +167,33 @@ contract ReputationTrackerTest is Test {
 
         // valid tracker can now deploy
         vm.prank(validTrackerAddr);
-        address newT = factory.deployNewTracker(address(0));
+        address newT = factory.deployNewTracker(bytes32(0), address(0));
         assertTrue(newT != address(0));
+    }
+
+    // ── IID and registry ─────────────────────────────────────────────────────
+
+    function test_IID_StoredOnContract() public {
+        assertEq(tracker1.IID(), IID_1);
+    }
+
+    function test_IID_ZeroForLegacyDeploy() public {
+        address t = factory.deployNewTracker(bytes32(0), address(0));
+        assertEq(ReputationTracker(t).IID(), bytes32(0));
+    }
+
+    function test_Factory_RegistryTracksDeployedContracts() public {
+        // tracker1 was deployed in setUp — must be in the registry
+        assertTrue(factory.isDeployedTracker(address(tracker1)));
+    }
+
+    function test_Factory_RegistryDoesNotIncludeRandomAddress() public {
+        assertFalse(factory.isDeployedTracker(address(0xdead)));
+    }
+
+    function test_Factory_RegistryTracksMultipleContracts() public {
+        address t2 = factory.deployNewTracker(IID_2, address(0));
+        assertTrue(factory.isDeployedTracker(address(tracker1)));
+        assertTrue(factory.isDeployedTracker(t2));
     }
 }

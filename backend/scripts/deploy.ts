@@ -54,8 +54,8 @@ function loadArtifact(contractName: string): { abi: ethers.InterfaceAbi; bytecod
 }
 
 const REP_FACTORY_ABI = [
-  'function deployNewTracker(address _referrer) external returns (address)',
-  'event NewReputationTracker(address indexed newContract, address indexed referrer, address indexed newTracker)',
+  'function deployNewTracker(bytes32 _iid, address _referrer) external returns (address)',
+  'event NewReputationTracker(address indexed newContract, address indexed referrer, address indexed newTracker, bytes32 iid)',
 ];
 
 // ── Deploy ────────────────────────────────────────────────────────────────────
@@ -85,7 +85,7 @@ if (!factoryAddress || factoryAddress === ethers.ZeroAddress) {
 // 2. Deploy first ReputationTracker via factory (no referrer)
 console.log('\nDeploying first ReputationTracker...');
 const repFactory = new ethers.Contract(factoryAddress, REP_FACTORY_ABI, wallet);
-const tx: ethers.TransactionResponse = await repFactory['deployNewTracker'](ethers.ZeroAddress);
+const tx: ethers.TransactionResponse = await repFactory['deployNewTracker'](ethers.ZeroHash, ethers.ZeroAddress);
 const receipt = await tx.wait();
 if (!receipt) {
   console.error('Error: Deployment transaction receipt is null');

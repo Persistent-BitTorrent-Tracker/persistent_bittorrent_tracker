@@ -4,6 +4,7 @@ pragma solidity ^0.8.20;
 contract ReputationTracker {
     address public immutable OWNER;
     address public immutable REFERRER; // single-hop inheritance
+    bytes32 public immutable IID;      // instance identifier set at deployment
     address public tracker; // current authorized tracker backend
 
     struct UserReputation {
@@ -19,8 +20,9 @@ contract ReputationTracker {
     event UserRegistered(address indexed user, uint256 timestamp);
     event ReputationUpdated(address indexed user, uint256 uploadDelta, uint256 downloadDelta);
 
-    constructor(address _referrer) {
+    constructor(bytes32 _iid, address _referrer) {
         OWNER = msg.sender;
+        IID = _iid;
         REFERRER = _referrer;
         tracker = msg.sender; // deployer becomes initial tracker
     }

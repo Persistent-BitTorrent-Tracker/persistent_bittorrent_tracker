@@ -27,11 +27,14 @@ contract RepFactory {
     mapping(address => bool) public isValidTracker;
     /// tracker address → keccak256 of TEE attestation report (empty = owner-added)
     mapping(address => bytes32) public attestationHash;
+    /// registry of ReputationTracker contracts deployed by this factory
+    mapping(address => bool) public isDeployedTracker;
 
     event NewReputationTracker(
         address indexed newContract,
         address indexed referrer,
-        address indexed newTracker
+        address indexed newTracker,
+        bytes32 iid
     );
     event TrackerAdded(address indexed tracker, bytes32 attestation);
     event TrackerRemoved(address indexed tracker);
@@ -47,10 +50,11 @@ contract RepFactory {
 
     /**
      * @notice Deploy a new ReputationTracker.
+     * @param _iid      Unique instance identifier chosen by the calling tracker operator.
      * @param _referrer Address of the previous tracker for single-hop
      *                  reputation delegation, or address(0) for a fresh start.
      */
-    function deployNewTracker(address _referrer) external returns (address) {
+    function deployNewTracker(bytes32 _iid, address _referrer) external returns (address) {
         if (msg.sender != owner && !isValidTracker[msg.sender]) revert Unauthorized();
 
         // Guard: referrer must be a deployed contract (not an EOA or garbage).
@@ -60,12 +64,13 @@ contract RepFactory {
             if (codeSize == 0) revert InvalidReferrer();
         }
 
-        ReputationTracker newTracker = new ReputationTracker(_referrer);
+        ReputationTracker newTracker = new ReputationTracker(_iid, _referrer);
         // Immediately grant the calling backend wallet write access to the new
         // tracker so that register / updateReputation calls work without a
         // separate setTracker transaction.
         newTracker.setTracker(msg.sender);
-        emit NewReputationTracker(address(newTracker), _referrer, msg.sender);
+        isDeployedTracker[address(newTracker)] = true;
+        emit NewReputationTracker(address(newTracker), _referrer, msg.sender, _iid);
         return address(newTracker);
     }
 

@@ -17,12 +17,15 @@
 import { ethers } from 'ethers';
 import 'dotenv/config';
 
-// ── Parse optional --old-contract flag ───────────────────────────────────────
+// ── Parse optional --old-contract and --iid flags ────────────────────────────
 
 const args = process.argv.slice(2);
 const contractFlagIdx = args.indexOf('--old-contract');
 const explicitOldContract =
   contractFlagIdx !== -1 ? args[contractFlagIdx + 1] : undefined;
+
+const iidFlagIdx = args.indexOf('--iid');
+const explicitIid = iidFlagIdx !== -1 ? args[iidFlagIdx + 1] : undefined;
 
 // ── Environment ───────────────────────────────────────────────────────────────
 
@@ -61,22 +64,26 @@ const provider = new ethers.JsonRpcProvider(rpcUrl);
 const wallet = new ethers.Wallet(privateKey, provider);
 
 const REP_FACTORY_ABI = [
-  'function deployNewTracker(address _referrer) external returns (address)',
-  'event NewReputationTracker(address indexed newContract, address indexed referrer, address indexed newTracker)',
+  'function deployNewTracker(bytes32 _iid, address _referrer) external returns (address)',
+  'event NewReputationTracker(address indexed newContract, address indexed referrer, address indexed newTracker, bytes32 iid)',
 ];
 
 const repFactory = new ethers.Contract(factoryAddress, REP_FACTORY_ABI, wallet);
 
 // ── Migrate ───────────────────────────────────────────────────────────────────
 
+// Derive the iid: use explicit flag value, or generate a fresh random one.
+const iid = explicitIid ?? ethers.hexlify(ethers.randomBytes(32));
+
 console.log('=== PBTS Controlled Migration ===');
 console.log(`Network     : ${rpcUrl}`);
 console.log(`Deployer    : ${wallet.address}`);
 console.log(`Factory     : ${factoryAddress}`);
-console.log(`Old contract: ${oldContract}\n`);
+console.log(`Old contract: ${oldContract}`);
+console.log(`New IID     : ${iid}\n`);
 
 console.log('Deploying new ReputationTracker...');
-const tx: ethers.TransactionResponse = await repFactory['deployNewTracker'](oldContract);
+const tx: ethers.TransactionResponse = await repFactory['deployNewTracker'](iid, oldContract);
 const receipt = await tx.wait();
 if (!receipt) {
   console.error('Error: Migration transaction receipt is null');

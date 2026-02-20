@@ -9,18 +9,20 @@ const REPUTATION_TRACKER_ABI = [
   "function setTracker(address newTracker) external",
 
   // Read
+  "function IID() external view returns (bytes32)",
   "function getReputation(address user) external view returns (tuple(uint256 uploadBytes, uint256 downloadBytes, uint256 lastUpdated))",
   "function getRatio(address user) external view returns (uint256)",
 ];
 
 // Minimal ABI for the RepFactory contract.
 const REP_FACTORY_ABI = [
-  "function deployNewTracker(address _referrer) external returns (address)",
+  "function deployNewTracker(bytes32 _iid, address _referrer) external returns (address)",
   "function addValidTracker(address tracker, bytes32 attestation) external",
   "function removeValidTracker(address tracker) external",
   "function isValidTracker(address) external view returns (bool)",
+  "function isDeployedTracker(address) external view returns (bool)",
   "function attestationHash(address) external view returns (bytes32)",
-  "event NewReputationTracker(address indexed newContract, address indexed referrer, address indexed newTracker)",
+  "event NewReputationTracker(address indexed newContract, address indexed referrer, address indexed newTracker, bytes32 iid)",
   "event TrackerAdded(address indexed tracker, bytes32 attestation)",
   "event TrackerRemoved(address indexed tracker)",
 ];
@@ -134,10 +136,13 @@ export async function updateReputation(
  * Deploy a new ReputationTracker via the RepFactory, pointing its referrer at
  * the old contract so that reputation is preserved.  Returns the address of
  * the newly deployed tracker.
+ *
+ * @param iid         bytes32 instance identifier for the new tracker.
+ * @param oldContract Address of the predecessor ReputationTracker.
  */
-export async function migrateFrom(oldContract: string): Promise<string> {
+export async function migrateFrom(iid: string, oldContract: string): Promise<string> {
   const factory = getFactory();
-  const tx: ethers.TransactionResponse = await factory["deployNewTracker"](oldContract);
+  const tx: ethers.TransactionResponse = await factory["deployNewTracker"](iid, oldContract);
   const receipt = await tx.wait();
   if (!receipt) throw new Error("Migration transaction receipt is null");
 

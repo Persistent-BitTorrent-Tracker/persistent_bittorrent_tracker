@@ -1,6 +1,7 @@
 import "dotenv/config";
 import express, { Request, Response } from "express";
 import cors from "cors";
+import { ethers } from "ethers";
 import config from "./config/index";
 import { registerHandler } from "./routes/register";
 import { reportHandler } from "./routes/report";
@@ -36,9 +37,11 @@ app.get("/health", (_req, res) => {
  * contract address.  The operator must update REPUTATION_TRACKER_ADDRESS in
  * the environment and restart the server to complete the migration.
  *
- * Body: { oldContract?: string }
+ * Body: { oldContract?: string, iid?: string }
  *   oldContract — address of the tracker to migrate from.
  *                 Defaults to the currently configured contractAddress.
+ *   iid         — bytes32 instance identifier for the new tracker (hex string).
+ *                 Defaults to ethers.ZeroHash when omitted.
  */
 app.post("/migrate", async (req: Request, res: Response): Promise<void> => {
   // ── Auth check ──────────────────────────────────────────────────────────
@@ -49,15 +52,17 @@ app.post("/migrate", async (req: Request, res: Response): Promise<void> => {
     return;
   }
 
-  const oldContract: string =
-    (req.body as { oldContract?: string }).oldContract ?? config.contractAddress;
+  const body = req.body as { oldContract?: string; iid?: string };
+  const oldContract: string = body.oldContract ?? config.contractAddress;
+  const iid: string = body.iid ?? ethers.ZeroHash;
 
   try {
-    const newAddress = await migrateFrom(oldContract);
+    const newAddress = await migrateFrom(iid, oldContract);
     res.status(200).json({
       success: true,
       oldContract,
       newContract: newAddress,
+      iid,
       message:
         "New ReputationTracker deployed. Update REPUTATION_TRACKER_ADDRESS and restart the server.",
     });

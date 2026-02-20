@@ -293,6 +293,7 @@ describe("POST /migrate", () => {
   const ADMIN_SECRET = "test-admin-secret";
   const OLD_CONTRACT = "0x0000000000000000000000000000000000000001";
   const NEW_CONTRACT = "0x0000000000000000000000000000000000000003";
+  const TEST_IID = "0x" + "ab".repeat(32); // 32-byte hex
 
   beforeEach(() => {
     jest.clearAllMocks();
@@ -316,12 +317,26 @@ describe("POST /migrate", () => {
     const res = await request(app)
       .post("/migrate")
       .set("Authorization", `Bearer ${ADMIN_SECRET}`)
-      .send({ oldContract: OLD_CONTRACT });
+      .send({ oldContract: OLD_CONTRACT, iid: TEST_IID });
     expect(res.status).toBe(200);
     expect(res.body.success).toBe(true);
     expect(res.body.newContract).toBe(NEW_CONTRACT);
     expect(res.body.oldContract).toBe(OLD_CONTRACT);
-    expect(mockMigrateFrom).toHaveBeenCalledWith(OLD_CONTRACT);
+    expect(res.body.iid).toBe(TEST_IID);
+    expect(mockMigrateFrom).toHaveBeenCalledWith(TEST_IID, OLD_CONTRACT);
+  });
+
+  it("uses ethers.ZeroHash when iid is omitted", async () => {
+    mockMigrateFrom.mockResolvedValue(NEW_CONTRACT);
+    const res = await request(app)
+      .post("/migrate")
+      .set("Authorization", `Bearer ${ADMIN_SECRET}`)
+      .send({ oldContract: OLD_CONTRACT });
+    expect(res.status).toBe(200);
+    expect(mockMigrateFrom).toHaveBeenCalledWith(
+      "0x0000000000000000000000000000000000000000000000000000000000000000",
+      OLD_CONTRACT
+    );
   });
 
   it("uses configured contractAddress when oldContract is omitted", async () => {
@@ -332,6 +347,7 @@ describe("POST /migrate", () => {
       .send({});
     expect(res.status).toBe(200);
     expect(mockMigrateFrom).toHaveBeenCalledWith(
+      "0x0000000000000000000000000000000000000000000000000000000000000000",
       "0x0000000000000000000000000000000000000001"
     );
   });
