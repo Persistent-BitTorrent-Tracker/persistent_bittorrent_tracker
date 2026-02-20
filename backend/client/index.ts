@@ -153,6 +153,7 @@ export class PBTSClient {
       } as any);
 
       const activeWires: Wire[] = [];
+      const pendingReceipts: Promise<void>[] = [];
 
       // Track peer connections for piece attribution
       torrent.on("wire", (wire: Wire) => {
@@ -174,16 +175,19 @@ export class PBTSClient {
 
       // Auto-generate receipts on piece verification
       torrent.on("verified", (pieceIndex: number) => {
-        this.handlePieceVerified(torrent, activeWires, pieceIndex, onReceipt).catch(
+        const p = this.handlePieceVerified(torrent, activeWires, pieceIndex, onReceipt).catch(
           (err) =>
             console.error(
               `[PBTS] Receipt error for piece ${pieceIndex}:`,
               err.message
             )
         );
+        pendingReceipts.push(p);
       });
 
-      torrent.on("done", () => {
+      torrent.on("done", async () => {
+        // Wait for all pending receipt submissions before reporting complete
+        await Promise.allSettled(pendingReceipts);
         console.log("[PBTS] Download complete");
         resolve({ infoHash: torrent.infoHash, torrent });
       });

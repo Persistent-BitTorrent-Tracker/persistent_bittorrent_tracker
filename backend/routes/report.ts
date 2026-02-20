@@ -142,11 +142,10 @@ export async function reportHandler(req: Request, res: Response): Promise<void> 
 
     const pieceSizeBig = BigInt(pieceSize);
 
-    // Update sender (upload) and receiver (download) in parallel.
-    const [senderReceipt, receiverReceipt] = await Promise.all([
-      updateReputation(sender, pieceSizeBig, 0n),
-      updateReputation(receiver, 0n, pieceSizeBig),
-    ]);
+    // Update sender (upload) then receiver (download) sequentially.
+    // Both use the same signer wallet, so parallel sends cause nonce collisions.
+    const senderReceipt = await updateReputation(sender, pieceSizeBig, 0n);
+    const receiverReceipt = await updateReputation(receiver, 0n, pieceSizeBig);
 
     // Record receipt only after successful on-chain update to avoid
     // blocking future valid retries caused by ephemeral errors.

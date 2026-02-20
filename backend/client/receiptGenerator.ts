@@ -60,14 +60,23 @@ export class ReceiptGenerator {
     let bestPeer: string | null = null;
     let bestDelta = 0;
 
-    for (const wire of wires) {
-      if (!wire.peerId) continue;
-      const prev = this.lastSnapshots.get(wire.peerId) ?? 0;
+    const validWires = wires.filter((w) => !!w.peerId);
+
+    for (const wire of validWires) {
+      const prev = this.lastSnapshots.get(wire.peerId!) ?? 0;
       const delta = wire.downloaded - prev;
       if (delta > bestDelta) {
         bestDelta = delta;
-        bestPeer = wire.peerId;
+        bestPeer = wire.peerId!;
       }
+    }
+
+    // Fallback: if no delta detected but exactly one peer is connected,
+    // it must be the sender (common for small single-piece files where
+    // wire.downloaded hasn't updated by the time "verified" fires).
+    if (!bestPeer && validWires.length === 1) {
+      bestPeer = validWires[0].peerId!;
+      bestDelta = validWires[0].downloaded || 1;
     }
 
     // Update snapshots for next round

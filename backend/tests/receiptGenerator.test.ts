@@ -142,16 +142,30 @@ describe("ReceiptGenerator — piece attribution", () => {
     expect(result!.delta).toBe(5000);
   });
 
-  it("returns null when no wires have download activity", () => {
+  it("returns null when multiple wires have no download activity", () => {
+    const wires = mockWires(
+      { peerId: "aa".repeat(20), downloaded: 100 },
+      { peerId: "bb".repeat(20), downloaded: 200 }
+    );
+
+    gen.snapshotWires(wires);
+
+    // No change in downloaded bytes — and multiple peers, so no fallback
+    const result = gen.attributePiece(wires);
+    expect(result).toBeNull();
+  });
+
+  it("falls back to single connected peer when no delta detected", () => {
     const wires = mockWires(
       { peerId: "aa".repeat(20), downloaded: 100 }
     );
 
     gen.snapshotWires(wires);
 
-    // No change in downloaded bytes
+    // No delta, but only one peer — must be the sender
     const result = gen.attributePiece(wires);
-    expect(result).toBeNull();
+    expect(result).not.toBeNull();
+    expect(result!.peerId).toBe("aa".repeat(20));
   });
 
   it("updates snapshots after attribution", () => {

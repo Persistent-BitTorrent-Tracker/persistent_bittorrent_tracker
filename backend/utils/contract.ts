@@ -26,7 +26,7 @@ const REP_FACTORY_ABI = [
 ];
 
 let _provider: ethers.JsonRpcProvider | null = null;
-let _signer: ethers.Wallet | null = null;
+let _signer: ethers.NonceManager | null = null;
 
 function getProvider(): ethers.JsonRpcProvider {
   if (!_provider) {
@@ -35,9 +35,10 @@ function getProvider(): ethers.JsonRpcProvider {
   return _provider;
 }
 
-function getSigner(): ethers.Wallet {
+function getSigner(): ethers.NonceManager {
   if (!_signer) {
-    _signer = new ethers.Wallet(config.trackerPrivateKey, getProvider());
+    const wallet = new ethers.Wallet(config.trackerPrivateKey, getProvider());
+    _signer = new ethers.NonceManager(wallet);
   }
   return _signer;
 }
