@@ -20,7 +20,7 @@ export interface WalletState {
   connect: () => Promise<void>
   disconnect: () => void
   switchToFuji: () => Promise<void>
-  signMessage: (message: string) => Promise<string>
+  signMessage: (message: string | Uint8Array) => Promise<string>
 }
 
 export function useWallet(): WalletState {
@@ -115,7 +115,7 @@ export function useWallet(): WalletState {
   }, [])
 
   const signMessage = useCallback(
-    async (message: string): Promise<string> => {
+    async (message: string | Uint8Array): Promise<string> => {
       if (!provider || !address) throw new Error('Wallet not connected')
       const signer = await provider.getSigner()
       return signer.signMessage(message)

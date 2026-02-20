@@ -7,9 +7,12 @@ import {
   LogOut,
   Copy,
   Check,
+  Sun,
+  Moon,
 } from "lucide-react"
 import { shortenAddress } from "@/lib/pbts-types"
 import { useState } from "react"
+import { useTheme } from "next-themes"
 
 export type DashboardTab = "dashboard" | "files"
 
@@ -29,11 +32,16 @@ export function DashboardHeader({
   onDisconnect,
 }: DashboardHeaderProps) {
   const [copied, setCopied] = useState(false)
+  const { theme, setTheme } = useTheme()
 
   const handleCopy = async () => {
     await navigator.clipboard.writeText(address)
     setCopied(true)
     setTimeout(() => setCopied(false), 2000)
+  }
+
+  const toggleTheme = () => {
+    setTheme(theme === "dark" ? "light" : "dark")
   }
 
   return (
@@ -96,6 +104,20 @@ export function DashboardHeader({
               <Copy className="h-3.5 w-3.5 text-muted-foreground" />
             )}
           </button>
+
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={toggleTheme}
+            className="text-muted-foreground hover:text-foreground"
+            aria-label="Toggle theme"
+          >
+            {theme === "dark" ? (
+              <Sun className="h-4 w-4" />
+            ) : (
+              <Moon className="h-4 w-4" />
+            )}
+          </Button>
 
           <Button
             variant="ghost"
