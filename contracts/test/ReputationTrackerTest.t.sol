@@ -22,6 +22,7 @@ contract ReputationTrackerTest is Test {
         tracker1 = ReputationTracker(t1Addr);
 
         // The factory is the owner of tracker1; set the test contract as the tracker
+        vm.prank(address(factory));
         tracker1.setTracker(trackerBackend);
     }
 
@@ -99,6 +100,7 @@ contract ReputationTrackerTest is Test {
         // Deploy tracker2 with tracker1 as referrer
         address t2Addr = factory.deployNewTracker(address(tracker1));
         tracker2 = ReputationTracker(t2Addr);
+        vm.prank(address(factory));
         tracker2.setTracker(trackerBackend);
 
         // user1 has no entry in tracker2 yet → delegates to tracker1
@@ -116,6 +118,7 @@ contract ReputationTrackerTest is Test {
         // Deploy tracker2 with tracker1 as referrer
         address t2Addr = factory.deployNewTracker(address(tracker1));
         tracker2 = ReputationTracker(t2Addr);
+        vm.prank(address(factory));
         tracker2.setTracker(trackerBackend);
 
         // user2 not in tracker1 or tracker2 → empty reputation
@@ -133,6 +136,7 @@ contract ReputationTrackerTest is Test {
         // Migrate: deploy tracker2 with tracker1 as referrer
         address t2Addr = factory.deployNewTracker(address(tracker1));
         tracker2 = ReputationTracker(t2Addr);
+        vm.prank(address(factory));
         tracker2.setTracker(trackerBackend);
 
         // Register user1 on tracker2 (new activity after migration)
