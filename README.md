@@ -82,8 +82,94 @@ eth_denver_2026/
 git clone https://github.com/faulknerpearce/eth_denver_2026.git
 cd eth_denver_2026
 
-# Setup will be added in subsequent development phases
+# Install dependencies
+npm install
+
+# Copy example environment and fill in values
+cp .env.example backend/.env
 ```
+
+### Smart Contract Deployment
+
+```bash
+cd contracts
+
+# Build contracts
+forge build
+
+# Run tests (including migration tests)
+forge test
+
+# Deploy RepFactory + first ReputationTracker to Avalanche Fuji
+make deploy-fuji
+# Outputs:
+#   RepFactory: 0x...
+#   First ReputationTracker: 0x...
+```
+
+After deployment, copy the addresses into `backend/.env`:
+
+```env
+FACTORY_ADDRESS=0x<RepFactory address>
+REPUTATION_TRACKER_ADDRESS=0x<First ReputationTracker address>
+ADMIN_SECRET=<a strong random secret>
+```
+
+### Backend Server
+
+```bash
+cd backend
+bun run dev   # development with hot reload
+bun run start # production
+```
+
+### Tracker Migration
+
+When a tracker needs to move to a new contract (e.g. after a server change or
+rotation), call the protected admin endpoint.  The new contract will have a
+`referrer` pointing at the old one so that all reputation history is preserved
+transparently — **no frontend changes required**.
+
+```bash
+curl -X POST http://localhost:3001/migrate \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer $ADMIN_SECRET" \
+  -d '{"oldContract": "0x<current REPUTATION_TRACKER_ADDRESS>"}'
+```
+
+Response:
+```json
+{
+  "success": true,
+  "oldContract": "0x...",
+  "newContract": "0x...",
+  "message": "New ReputationTracker deployed. Update REPUTATION_TRACKER_ADDRESS and restart the server."
+}
+```
+
+Then update `backend/.env`:
+
+```env
+REPUTATION_TRACKER_ADDRESS=0x<newContract>
+```
+
+and restart the server.  All existing users' reputation is automatically
+accessible through the new contract's single-hop referrer delegation.
+
+> **Tip**: If `oldContract` is omitted from the request body, the server
+> defaults to the currently configured `REPUTATION_TRACKER_ADDRESS`.  Both
+> usages are valid:
+> ```bash
+> # Explicit old contract address
+> curl -X POST http://localhost:3001/migrate \
+>   -H "Authorization: Bearer $ADMIN_SECRET" \
+>   -d '{"oldContract":"0xOldAddress"}'
+>
+> # Omit oldContract — server uses the configured REPUTATION_TRACKER_ADDRESS
+> curl -X POST http://localhost:3001/migrate \
+>   -H "Authorization: Bearer $ADMIN_SECRET" \
+>   -d '{}'
+> ```
 
 ## Development Phases
 
