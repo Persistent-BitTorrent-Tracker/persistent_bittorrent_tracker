@@ -3,10 +3,10 @@
  * PBTS CLI — demo tool for the Persistent BitTorrent Tracker System.
  *
  * Usage:
- *   bun run client/cli.ts register
- *   bun run client/cli.ts seed <file>
- *   bun run client/cli.ts download <magnet-or-infohash>
- *   bun run client/cli.ts status
+ *   npx tsx client/cli.ts register
+ *   npx tsx client/cli.ts seed <file>
+ *   npx tsx client/cli.ts download <magnet-or-infohash>
+ *   npx tsx client/cli.ts status
  *
  * Environment:
  *   PRIVATE_KEY          — Ethereum private key for this client
@@ -58,10 +58,10 @@ async function main() {
       break;
     default:
       console.log("Usage:");
-      console.log("  bun run client/cli.ts register");
-      console.log("  bun run client/cli.ts seed <file>");
-      console.log("  bun run client/cli.ts download <magnet-or-infohash>");
-      console.log("  bun run client/cli.ts status");
+      console.log("  npx tsx client/cli.ts register");
+      console.log("  npx tsx client/cli.ts seed <file>");
+      console.log("  npx tsx client/cli.ts download <magnet-or-infohash>");
+      console.log("  npx tsx client/cli.ts status");
       process.exit(1);
   }
 }
