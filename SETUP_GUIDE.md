@@ -1,227 +1,157 @@
-# PBTS Complete Setup Guide
+# PBTS Setup Guide
 
-This guide provides all commands needed to deploy and interact with the Persistent BitTorrent Tracker System (PBTS).
+Quick-start guide for running the Persistent BitTorrent Tracker System locally.
+
+---
 
 ## Prerequisites
 
-- **Foundry**: Install from [getfoundry.sh](https://getfoundry.sh)
-- **Node.js 18+**: For running the backend server and frontend
-- **MetaMask** (optional): For frontend wallet interactions
-- **Test ETH/AVAX**: Faucet funds for gas fees
+| Tool | Purpose | Install |
+|------|---------|---------|
+| **Node.js 18+** | Backend + Frontend | [nodejs.org](https://nodejs.org) |
+| **Foundry** | Compile & deploy contracts | `curl -L https://foundry.paradigm.xyz \| bash && foundryup` |
+| **MetaMask** | Browser wallet for the frontend | [metamask.io](https://metamask.io) |
+| **Testnet funds** | Gas for contract deployment | [Fuji faucet](https://faucet.avax.network/) · [Sepolia faucet](https://sepoliafaucet.com/) |
 
-## Quick Start (Recommended Path)
+---
 
-### 1. Clone and Install Dependencies
-
-```bash
-# Clone the repository
-git clone https://github.com/faulknerpearce/eth_denver_2026.git
-cd eth_denver_2026/persistent_bittorrent_tracker
-
-# Install backend dependencies
-cd backend
-npm install
-cd ..
-
-# Install frontend dependencies
-cd frontend
-npm install
-cd ..
-
-# Install Foundry dependencies
-cd contracts
-forge install
-cd ..
-```
-
-### 2. Configure Environment Variables
-
-#### Contracts Environment
+## Step 1 — Clone and Install
 
 ```bash
-cd contracts
-cp .env.example .env
+git clone https://github.com/Persistent-BitTorrent-Tracker/persistent_bittorrent_tracker.git
+cd persistent_bittorrent_tracker
+
+# Install all dependencies
+cd backend  && npm install && cd ..
+cd frontend && npm install && cd ..
+cd contracts && forge install && cd ..
 ```
 
-Edit `contracts/.env`:
+---
+
+## Step 2 — Configure Environment Variables
+
+### Contracts (`contracts/.env`)
+
+```bash
+cd contracts && cp .env.example .env
+```
 
 ```env
-# Network (choose one)
-RPC_URL=https://api.avax-test.network/ext/bc/C/rpc  # Avalanche Fuji
-# RPC_URL=https://rpc.sepolia.org                   # Ethereum Sepolia
+# Network — pick one
+RPC_URL=https://api.avax-test.network/ext/bc/C/rpc   # Avalanche Fuji
+# RPC_URL=https://rpc.sepolia.org                    # Ethereum Sepolia
 
-CHAIN_ID=43113  # Fuji: 43113, Sepolia: 11155111
+CHAIN_ID=43113   # Fuji: 43113 · Sepolia: 11155111
 
-# Your deployer wallet private key (NEVER commit real keys)
+# Deployer wallet private key (never commit a real key)
 PRIVATE_KEY=0x<your_private_key_here>
 
-# Verification API keys (optional, for contract verification)
-SNOWTRACE_API_KEY=<your_snowtrace_api_key>  # For Fuji
-ETHERSCAN_API_KEY=<your_etherscan_api_key>  # For Sepolia
+# Optional: for contract verification
+SNOWTRACE_API_KEY=<your_snowtrace_api_key>
+ETHERSCAN_API_KEY=<your_etherscan_api_key>
 ```
 
-#### Backend Environment
+### Backend (`backend/.env`)
 
 ```bash
-cd ../backend
-cp .env.example .env
+cd backend && cp .env.example .env
 ```
 
-Edit `backend/.env`:
-
 ```env
-# Network (must match contracts/.env)
+# Must match contracts/.env
 RPC_URL=https://api.avax-test.network/ext/bc/C/rpc
 CHAIN_ID=43113
 
-# Same private key as contracts (this wallet pays gas for backend operations)
+# Same wallet as above — pays gas for on-chain reputation updates
 DEPLOYER_PRIVATE_KEY=<your_private_key_here>
 
-# Contract addresses (leave empty for now, filled after deployment)
+# Filled in after Step 4 (deployment)
 REPUTATION_TRACKER_ADDRESS=
 FACTORY_ADDRESS=
 
-# Backend server configuration
 PORT=3001
 NODE_ENV=development
 
-# Generate a secure random secret for the /migrate admin endpoint
+# Random secret for the /migrate admin endpoint
 ADMIN_SECRET=$(openssl rand -hex 32)
 
-# Minimum ratio for peer access (default: 0.5)
 MIN_RATIO=0.5
-
-# Receipt timestamp window in seconds (default: 300)
 TIMESTAMP_WINDOW_SECONDS=300
-
-# BitTorrent tracker port
 TRACKER_PORT=8000
 ```
 
-#### Frontend Environment
+### Frontend (`frontend/.env.local`)
 
 ```bash
-cd ../frontend
-cp .env.local.example .env.local
+cd frontend && cp .env.local.example .env.local
 ```
-
-Edit `frontend/.env.local`:
 
 ```env
-# URL of the PBTS backend server
 VITE_BACKEND_URL=http://localhost:3001
 
-# Chain ID matching your deployed contracts
-#   Ethereum Sepolia : 11155111
-#   Avalanche Fuji   : 43113
-VITE_CHAIN_ID=43113
+# Match CHAIN_ID above
+VITE_CHAIN_ID=43113   # Fuji: 43113 · Sepolia: 11155111
 
-# Address of the deployed ReputationTracker contract (filled after deployment)
+# Filled in after Step 4 (deployment)
 VITE_REPUTATION_TRACKER_ADDRESS=
+
+# Optional: only needed to use the Migrate button in the dashboard
+VITE_ADMIN_SECRET=
 ```
 
-### 3. Build Contracts
+---
+
+## Step 3 — Build and Test Contracts
 
 ```bash
 cd contracts
 forge build
-```
-
-**Expected Output:**
-```
-[⠊] Compiling...
-[⠘] Solc 0.8.33 finished in 680.72ms
-Compiler run successful!
-```
-
-### 4. Run Contract Tests
-
-```bash
 forge test -vv
 ```
 
-**Expected Output:**
+Expected output:
 ```
-Ran 19 tests for test/ReputationTrackerTest.t.sol:ReputationTrackerTest
-[PASS] test_Attestation_MVP() (gas: 5480)
-[PASS] test_Factory_AddValidTracker() (gas: 603224)
-...
+Compiler run successful!
 Suite result: ok. 19 passed; 0 failed; 0 skipped
 ```
 
-## Deployment Options
+---
 
-You have two deployment paths:
-
-### Option A: Backend Scripts (Recommended)
-
-The backend `deploy.ts` script handles both RepFactory and ReputationTracker deployment in one command.
+## Step 4 — Deploy Contracts
 
 ```bash
 cd backend
 npm run deploy
 ```
 
-**Expected Output:**
+Expected output:
 ```
-=== PBTS Initial Deployment ===
-Network : https://api.avax-test.network/ext/bc/C/rpc
-Deployer: 0x<your_address>
-
-Deploying RepFactory...
-✓ RepFactory deployed: 0x<factory_address>
-
-Deploying first ReputationTracker...
+✓ RepFactory deployed:        0x<factory_address>
 ✓ ReputationTracker deployed: 0x<tracker_address>
-
-=== Deployment Summary ===
-RepFactory         : 0x<factory_address>
-ReputationTracker  : 0x<tracker_address>
-
-Update your backend/.env:
-  FACTORY_ADDRESS=0x<factory_address>
-  REPUTATION_TRACKER_ADDRESS=0x<tracker_address>
 ```
 
-**After deployment**, update your `backend/.env` with the addresses shown above.
-
-### Option B: Foundry Script (Basic)
-
-The Foundry script deploys only a single ReputationTracker (no factory).
+Copy the two addresses into `backend/.env` and `frontend/.env.local`:
 
 ```bash
-cd contracts
-source .env
-forge script script/DeployPBTS.s.sol:DeployPBTS \
-  --rpc-url $RPC_URL \
-  --private-key $PRIVATE_KEY \
-  --broadcast
+# backend/.env
+FACTORY_ADDRESS=0x<factory_address>
+REPUTATION_TRACKER_ADDRESS=0x<tracker_address>
+
+# frontend/.env.local
+VITE_REPUTATION_TRACKER_ADDRESS=0x<tracker_address>
 ```
 
-**Expected Output:**
-```
-ReputationTracker: 0x<tracker_address>
-```
+---
 
-**Note:** This method does NOT deploy RepFactory, so migration functionality will not be available. Use Option A for full functionality.
-
-### 5. Update Backend Configuration
-
-Edit `backend/.env` with the deployed addresses:
-
-```env
-FACTORY_ADDRESS=0x<factory_address_from_deployment>
-REPUTATION_TRACKER_ADDRESS=0x<tracker_address_from_deployment>
-```
-
-### 6. Start Backend Server
+## Step 5 — Start the Backend
 
 ```bash
 cd backend
 npm run dev
 ```
 
-**Expected Output:**
+Expected output:
 ```
 [PBTS] Tracker server running on port 3001 (development)
 [PBTS] RPC URL : https://api.avax-test.network/ext/bc/C/rpc
@@ -229,518 +159,148 @@ npm run dev
 [PBTS] BitTorrent tracker running on port 8000
 ```
 
-Leave this terminal running. Open a new terminal for the next steps.
+Leave this terminal running.
 
-### 7. Start Frontend (Optional)
+---
 
-The frontend is a Vite + React SPA. In a new terminal:
+## Step 6 — Start the Frontend
+
+Open a new terminal:
 
 ```bash
 cd frontend
 npm run dev
 ```
 
-**Expected Output:**
+Expected output:
 ```
-  VITE v6.x.x  ready in 300 ms
-
+  VITE v6.x.x  ready in ~300 ms
   ➜  Local:   http://localhost:5173/
-  ➜  Network: use --host to expose
 ```
 
-Open `http://localhost:5173` in your browser. Connect MetaMask to use the dashboard.
+Open **http://localhost:5173** in your browser and connect MetaMask to start building reputation.
 
-To build for production:
+---
+
+## Step 7 — Verify Everything is Working
 
 ```bash
-cd frontend
-npm run build       # outputs to frontend/dist/
-npm run preview     # preview the production build locally
-```
+# Check contract + reputation chain
+cd backend && npm run status
 
-### 8. Verify Deployment Status
-
-Check contract status and reputation chain:
-
-```bash
-cd backend
-npm run status
-```
-
-**Expected Output:**
-```
-=== PBTS Contract Status ===
-Network : https://api.avax-test.network/ext/bc/C/rpc
-Contract: 0x<tracker_address>
-
-Owner   : 0x<factory_address>
-Tracker : 0x<your_wallet_address>
-Referrer: 0x0000000000000000000000000000000000000000 (genesis)
-
-=== Referrer Chain ===
-  0x<tracker_address> (current) → genesis
-Chain length: 1
-```
-
-## Testing the System
-
-### Test 1: Register a User
-
-```bash
-# In a new terminal
-cd backend
-npm run register
-```
-
-**Expected Output:**
-```
-=== PBTS User Registration ===
-Registering: 0x<your_wallet_address>
-✓ User registered successfully
-TX: 0x<transaction_hash>
-Initial credit: 1 GB (1073741824 bytes)
-```
-
-### Test 2: Submit a Transfer Receipt
-
-Create a test receipt and submit it:
-
-```bash
-curl -X POST http://localhost:3001/report \
-  -H "Content-Type: application/json" \
-  -d '{
-    "infohash": "0x1234567890abcdef1234567890abcdef12345678",
-    "sender": "0x<your_wallet_address>",
-    "receiver": "0x<another_test_address>",
-    "pieceHash": "0xabcdef1234567890abcdef1234567890abcdef1234567890abcdef1234567890",
-    "pieceIndex": 0,
-    "pieceSize": 262144,
-    "timestamp": '$(date +%s)',
-    "signature": "0x<receiver_signature>"
-  }'
-```
-
-**Note:** For a real receipt, the receiver must sign the receipt data. For testing, you'll need to:
-1. Register the receiver address first
-2. Generate a valid signature using the receiver's private key
-
-### Test 3: Request Peer List (Announce)
-
-```bash
-npm run announce
-```
-
-**Expected Output (good ratio):**
-```
-=== PBTS Announce ===
-Announcing: started for 0x1234567890abcdef1234567890abcdef12345678
-
-✓ Access granted
-Current reputation:
-  Upload   : 1.00 GB
-  Download : 0.00 GB
-  Ratio    : Infinity
-
-Peers: 0
-```
-
-**Expected Output (low ratio):**
-```
-✗ Access denied (ratio too low)
-Current ratio: 0.45
-Required: 0.50
-Upload 53.69 MB more to unlock access
-```
-
-### Test 4: Contract Migration
-
-Deploy a new ReputationTracker contract with the current one as referrer:
-
-```bash
-cd backend
-npm run migrate
-```
-
-**Expected Output:**
-```
-=== PBTS Controlled Migration ===
-Network     : https://api.avax-test.network/ext/bc/C/rpc
-Deployer    : 0x<your_wallet_address>
-Factory     : 0x<factory_address>
-Old contract: 0x<old_tracker_address>
-
-Deploying new ReputationTracker...
-✓ New ReputationTracker deployed: 0x<new_tracker_address>
-
-=== Migration Complete ===
-Old contract: 0x<old_tracker_address>
-New contract: 0x<new_tracker_address>
-
-Update backend/.env:
-  REPUTATION_TRACKER_ADDRESS=0x<new_tracker_address>
-
-Then restart the server with: npm run dev
-```
-
-**After migration:**
-
-1. Update `backend/.env`:
-   ```env
-   REPUTATION_TRACKER_ADDRESS=0x<new_tracker_address>
-   ```
-
-2. Restart the server:
-   ```bash
-   npm run dev
-   ```
-
-3. Verify reputation is preserved:
-   ```bash
-   npm run status
-   ```
-
-   You should see the referrer chain:
-   ```
-   === Referrer Chain ===
-     0x<new_tracker_address> (current) → 0x<old_tracker_address> → genesis
-   Chain length: 2
-   ```
-
-### Test 5: Run Full Test Suites
-
-#### Backend Tests
-
-```bash
-cd backend
+# Run all backend tests
 npm test
+
+# Run all contract tests
+cd ../contracts && forge test -vv
+
+# Run backend + contract tests together
+cd ../backend && npm run test:all
 ```
 
-**Expected Output:**
-```
-PASS  tests/api.test.ts
-PASS  tests/signatures.test.ts
-PASS  tests/receiptGenerator.test.ts
-PASS  tests/bindPeer.test.ts
-PASS  tests/peerRegistry.test.ts
+---
 
-Test Suites: 5 passed, 5 total
-Tests:       27 passed, 27 total
-```
+## Common Commands Reference
 
-#### Contract Tests
+| Command | What it does |
+|---------|-------------|
+| `cd backend && npm run dev` | Start the tracker API server |
+| `cd frontend && npm run dev` | Start the frontend dev server |
+| `cd backend && npm run deploy` | Deploy RepFactory + ReputationTracker |
+| `cd backend && npm run status` | Print contract state and referrer chain |
+| `cd backend && npm run register` | Register the deployer wallet on-chain |
+| `cd backend && npm run announce` | Test peer-list access via CLI |
+| `cd backend && npm run migrate` | Deploy a new tracker (preserves reputation) |
+| `cd backend && npm test` | Run backend test suite |
+| `cd contracts && forge test -vv` | Run Solidity test suite |
+| `cd frontend && npm run build` | Production build → `frontend/dist/` |
 
-```bash
-cd contracts
-forge test -vv
-```
+---
 
-**Expected Output:**
-```
-Ran 19 tests for test/ReputationTrackerTest.t.sol:ReputationTrackerTest
-Suite result: ok. 19 passed; 0 failed; 0 skipped
-```
+## API Quick Reference
 
-#### Run Both
+All endpoints run at `http://localhost:3001`.
 
-```bash
-cd backend
-npm run test:all
-```
-
-## API Reference
-
-### POST /register
-
-Register a new user on-chain.
-
+### `POST /register` — Register a wallet on-chain
 ```bash
 curl -X POST http://localhost:3001/register \
   -H "Content-Type: application/json" \
-  -d '{
-    "userAddress": "0x<user_address>",
-    "message": "Register PBTS account: 0x<user_address>",
-    "signature": "0x<eip191_signature>"
-  }'
+  -d '{"userAddress":"0x<addr>","message":"Register PBTS account: 0x<addr>","signature":"0x<sig>"}'
 ```
 
-**Response (201):**
-```json
-{
-  "success": true,
-  "userAddress": "0x<user_address>",
-  "initialCredit": 1073741824,
-  "txHash": "0x<transaction_hash>"
-}
-```
-
-### POST /report
-
-Submit a cryptographic transfer receipt.
-
+### `POST /report` — Submit a signed transfer receipt
 ```bash
 curl -X POST http://localhost:3001/report \
   -H "Content-Type: application/json" \
-  -d '{
-    "infohash": "0x<40_char_hash>",
-    "sender": "0x<sender_address>",
-    "receiver": "0x<receiver_address>",
-    "pieceHash": "0x<64_char_hash>",
-    "pieceIndex": 0,
-    "pieceSize": 262144,
-    "timestamp": 1700000000,
-    "signature": "0x<receiver_signature>"
-  }'
+  -d '{"infohash":"0x<40hex>","sender":"0x<addr>","receiver":"0x<addr>","pieceHash":"0x<64hex>","pieceIndex":0,"pieceSize":262144,"timestamp":1700000000,"signature":"0x<sig>"}'
 ```
 
-**Response (200):**
-```json
-{
-  "success": true,
-  "sender": {
-    "address": "0x<sender_address>",
-    "upload": "1.25 GB",
-    "download": "0.00 GB",
-    "ratio": "Infinity",
-    "txHash": "0x<tx_hash>"
-  },
-  "receiver": {
-    "address": "0x<receiver_address>",
-    "upload": "1.00 GB",
-    "download": "0.25 GB",
-    "ratio": "4.00",
-    "txHash": "0x<tx_hash>"
-  }
-}
-```
-
-### POST /announce
-
-Request peer list (requires MIN_RATIO).
-
+### `POST /announce` — Request peer list (ratio checked)
 ```bash
 curl -X POST http://localhost:3001/announce \
   -H "Content-Type: application/json" \
-  -d '{
-    "userAddress": "0x<user_address>",
-    "infohash": "0x<40_char_hash>",
-    "event": "started",
-    "message": "Announce started for 0x<40_char_hash>",
-    "signature": "0x<user_signature>"
-  }'
+  -d '{"userAddress":"0x<addr>","infohash":"0x<40hex>","event":"started","message":"<msg>","signature":"0x<sig>"}'
 ```
 
-**Response (200 - Access Granted):**
-```json
-{
-  "success": true,
-  "reason": "Ratio sufficient",
-  "reputation": {
-    "upload": "1.00 GB",
-    "download": "0.50 GB",
-    "ratio": "2.00"
-  },
-  "peers": [
-    {
-      "address": "0x<peer_address>",
-      "peerId": "peer_id_string"
-    }
-  ]
-}
-```
-
-**Response (403 - Access Denied):**
-```json
-{
-  "error": "Ratio too low",
-  "required": 0.5,
-  "actual": 0.45,
-  "uploadDeficitMB": 53.69,
-  "reputation": {
-    "upload": "900.00 MB",
-    "download": "2.00 GB",
-    "ratio": "0.45"
-  }
-}
-```
-
-### GET /health
-
-Health check endpoint.
-
+### `GET /health` — Backend health check
 ```bash
 curl http://localhost:3001/health
+# → {"status":"ok","timestamp":"..."}
 ```
 
-**Response (200):**
-```json
-{
-  "status": "ok",
-  "timestamp": "2026-02-20T12:34:56.789Z"
-}
-```
-
-### POST /migrate (Admin Only)
-
-Deploy a new tracker contract.
-
+### `POST /migrate` — Deploy a new tracker contract *(admin only)*
 ```bash
 curl -X POST http://localhost:3001/migrate \
   -H "Content-Type: application/json" \
   -H "Authorization: Bearer <ADMIN_SECRET>" \
-  -d '{
-    "oldContract": "0x<old_tracker_address>"
-  }'
+  -d '{"oldContract":"0x<old_tracker_address>"}'
 ```
 
-**Response (200):**
-```json
-{
-  "success": true,
-  "oldContract": "0x<old_address>",
-  "newContract": "0x<new_address>",
-  "message": "New ReputationTracker deployed. Update REPUTATION_TRACKER_ADDRESS and restart the server."
-}
-```
-
-## Contract Verification
-
-### Verify on Snowtrace (Avalanche Fuji)
-
-```bash
-cd contracts
-source .env
-forge verify-contract \
-  $REPUTATION_TRACKER_ADDRESS \
-  src/ReputationTracker.sol:ReputationTracker \
-  --chain-id 43113 \
-  --etherscan-api-key $SNOWTRACE_API_KEY \
-  --constructor-args $(cast abi-encode "constructor(address)" "0x0000000000000000000000000000000000000000")
-```
-
-### Verify on Etherscan (Ethereum Sepolia)
-
-```bash
-cd contracts
-source .env
-forge verify-contract \
-  $REPUTATION_TRACKER_ADDRESS \
-  src/ReputationTracker.sol:ReputationTracker \
-  --chain-id 11155111 \
-  --etherscan-api-key $ETHERSCAN_API_KEY \
-  --constructor-args $(cast abi-encode "constructor(address)" "0x0000000000000000000000000000000000000000")
-```
+---
 
 ## Troubleshooting
 
-### "Only tracker" Error
+| Error | Cause | Fix |
+|-------|-------|-----|
+| `Only tracker` | Backend wallet ≠ contract tracker address | Redeploy via `npm run deploy` |
+| `Invalid signature` | Wrong signing format | Use EIP-191 `personal_sign` |
+| `User already registered` | Wallet already on-chain | Expected — not an error |
+| Server won't start | Missing `.env` values | Ensure `DEPLOYER_PRIVATE_KEY`, `RPC_URL`, `REPUTATION_TRACKER_ADDRESS`, `FACTORY_ADDRESS`, `ADMIN_SECRET` are all set |
+| `Insufficient funds` | No testnet gas | Fund wallet from [Fuji faucet](https://faucet.avax.network/) or [Sepolia faucet](https://sepoliafaucet.com/) |
+| Frontend shows "backend offline" | Backend not running | Run `cd backend && npm run dev` first |
 
-**Problem:** Backend cannot write to contract.
+---
 
-**Solution:** The tracker address in the contract is set permanently at deployment and must match your deployer wallet. When using `npm run deploy` or the RepFactory, the caller automatically becomes the authorized tracker. If the tracker address doesn't match, you need to deploy a new contract via the factory.
-
-### "Invalid signature" Error
-
-**Problem:** Signature verification failed.
-
-**Solution:** Ensure you're using EIP-191 personal_sign format:
-```javascript
-const message = "Register PBTS account: 0x<address>";
-const signature = await provider.send("personal_sign", [message, address]);
-```
-
-### "User already registered" Error
-
-**Problem:** Trying to register an already registered user.
-
-**Solution:** This is expected behavior. Each user can only register once per contract. After migration, users don't need to re-register (reputation is delegated from the old contract).
-
-### Server Won't Start
-
-**Problem:** Missing environment variables.
-
-**Solution:** Verify all required variables in `backend/.env`:
-- `DEPLOYER_PRIVATE_KEY`
-- `RPC_URL`
-- `REPUTATION_TRACKER_ADDRESS`
-- `FACTORY_ADDRESS`
-- `ADMIN_SECRET`
-
-### Transaction Fails with "Insufficient Funds"
-
-**Problem:** Deployer wallet has no testnet ETH/AVAX.
-
-**Solution:** Get testnet funds:
-- **Avalanche Fuji**: https://faucet.avax.network/
-- **Ethereum Sepolia**: https://sepoliafaucet.com/
-
-## Architecture Overview
+## Architecture
 
 ```
-┌─────────────────────────────────────────────────────────────┐
-│                      PBTS Architecture                       │
-├─────────────────────────────────────────────────────────────┤
-│                                                               │
-│  Frontend (Vite + React)                                    │
-│      │                                                        │
-│      │ HTTP API calls                                        │
-│      ↓                                                        │
-│  Backend (Express + ethers.js)                               │
-│      │                                                        │
-│      │ Contract calls (register, updateReputation)           │
-│      ↓                                                        │
-│  RepFactory (Solidity)                                       │
-│      │                                                        │
-│      │ Deploys                                               │
-│      ↓                                                        │
-│  ReputationTracker (Solidity)                                │
-│      │                                                        │
-│      │ REFERRER → Previous ReputationTracker                │
-│      │            (single-hop delegation)                    │
-│      ↓                                                        │
-│  Blockchain (Avalanche Fuji / Ethereum Sepolia)              │
-│                                                               │
-└─────────────────────────────────────────────────────────────┘
+Frontend (Vite + React)  ──HTTP──▶  Backend (Express + ethers.js)
+                                          │
+                                          │ contract calls
+                                          ▼
+                                    RepFactory (Solidity)
+                                          │
+                                          │ deploys
+                                          ▼
+                                  ReputationTracker (Solidity)
+                                          │
+                                          │ REFERRER → previous contract
+                                          ▼
+                              Blockchain (Avalanche Fuji / Sepolia)
 ```
 
-## Key Concepts
+### How reputation works
+- **Initial credit**: 1 GB on registration
+- **Uploads**: credited when a signed receipt is submitted via `/report`
+- **Ratio** = `uploadBytes / downloadBytes` — must stay ≥ `MIN_RATIO` (default 0.5) for peer-list access
+- **Migration**: deploy a new `ReputationTracker` pointing to the old one as `REFERRER`; reputation is read through the chain with zero re-registration required
 
-### Reputation System
-
-- **Initial Credit**: 1 GB (1,073,741,824 bytes) given on registration
-- **Upload/Download Tracking**: Updated via cryptographic receipts
-- **Ratio Calculation**: `(uploadBytes * 1e18) / downloadBytes`
-- **Access Control**: Users must maintain `ratio >= MIN_RATIO` to get peer lists
-
-### Migration & Referrer Chain
-
-- Each ReputationTracker has a `REFERRER` pointing to the previous contract
-- When reading reputation, if user not found locally, delegate to REFERRER
-- Single-hop delegation prevents unbounded gas costs
-- Frontend API remains unchanged across migrations
-
-### Cryptographic Receipts
-
-- Receiver signs: `keccak256(abi.encode(infohash, sender, receiver, pieceHash, pieceIndex, pieceSize, timestamp))`
-- Prevents fake upload claims
-- Timestamp window prevents replay attacks
-- In-memory deduplication prevents double-counting
-
-## Next Steps
-
-1. **Deploy to Production Network**: Update RPC_URL to mainnet endpoint
-2. **TEE Integration**: Implement attestation validation in RepFactory
-3. **Frontend Development**: Build React dashboard for user interactions
-4. **P2P Integration**: Connect to real BitTorrent protocol via WebTorrent
-5. **BLS Signatures**: Implement aggregated batch receipt submission
+---
 
 ## Resources
 
-- **Foundry Documentation**: https://book.getfoundry.sh/
-- **ethers.js v6 Docs**: https://docs.ethers.org/v6/
-- **Avalanche Fuji Explorer**: https://testnet.snowtrace.io/
-- **Ethereum Sepolia Explorer**: https://sepolia.etherscan.io/
-- **Project Repository**: https://github.com/faulknerpearce/eth_denver_2026
+- [Foundry Book](https://book.getfoundry.sh/)
+- [ethers.js v6 Docs](https://docs.ethers.org/v6/)
+- [Avalanche Fuji Explorer](https://testnet.snowtrace.io/)
+- [Ethereum Sepolia Explorer](https://sepolia.etherscan.io/)
 
-## License
-
-TBD
