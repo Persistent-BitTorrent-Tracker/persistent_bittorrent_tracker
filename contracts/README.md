@@ -85,7 +85,7 @@ contracts/
 │   ├── ReputationTracker.sol   # Core reputation contract
 │   └── RepFactory.sol          # Factory for deploying tracker contracts
 ├── script/
-│   └── DeployPBTS.s.sol        # Deployment script (factory + first tracker)
+│   └── DeployPBTS.s.sol        # Basic deployment script (single tracker)
 └── test/
     └── ReputationTrackerTest.t.sol  # Foundry tests (registration, ratio, migration)
 ```
@@ -112,6 +112,17 @@ make test
 
 ### Deploy
 
+**Important:** The Foundry script `DeployPBTS.s.sol` only deploys a single `ReputationTracker` contract without the RepFactory. For full functionality including contract migration, use the backend deployment scripts instead:
+
+```bash
+cd ../backend
+npm run deploy
+```
+
+See [SETUP_GUIDE.md](../SETUP_GUIDE.md) for complete deployment instructions.
+
+#### Alternative: Basic Foundry Deployment (No Factory)
+
 1. Create `contracts/.env` from the template and fill in your values:
 
 ```env
@@ -131,13 +142,13 @@ ETHERSCAN_API_KEY=
 make deploy
 ```
 
-The script deploys the `ReputationTracker` contract and prints the address:
+The script deploys a single `ReputationTracker` contract and prints the address:
 
 ```
 ReputationTracker: 0x...
 ```
 
-Copy this into your backend `.env` as `REPUTATION_TRACKER_ADDRESS`. The `FACTORY_ADDRESS` is not needed for basic operation.
+**Note:** This method does NOT deploy RepFactory, so migration functionality will not be available.
 
 3. (Optional) Verify on a block explorer:
 

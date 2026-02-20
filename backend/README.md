@@ -42,22 +42,22 @@ backend/
 
 ## Environment Variables
 
-Copy `.env.example` from the repository root to `backend/.env` and fill in your values. The backend resolves the RPC URL in priority order: `RPC_URL` > `ETH_SEPOLIA_RPC_URL` > `AVALANCHE_FUJI_RPC_URL`.
+Copy `.env.example` to `backend/.env` and fill in your values. The backend resolves the RPC URL in priority order: `RPC_URL` > `ETH_SEPOLIA_RPC_URL`.
 
 | Variable | Required | Description |
 |---|---|---|
 | `DEPLOYER_PRIVATE_KEY` | Yes | Private key of the tracker wallet (pays gas) |
-| `REPUTATION_TRACKER_ADDRESS` | Yes | Currently active `ReputationTracker` contract |
-| `FACTORY_ADDRESS` | Yes | Deployed `RepFactory` contract (used during migration) |
+| `REPUTATION_TRACKER_ADDRESS` | Yes* | Currently active `ReputationTracker` contract (*empty until deployment) |
+| `FACTORY_ADDRESS` | Yes* | Deployed `RepFactory` contract (*empty until deployment) |
 | `ADMIN_SECRET` | Yes | Bearer token for the `/migrate` admin endpoint |
 | `RPC_URL` | No | Generic JSON-RPC endpoint (highest priority) |
-| `ETH_SEPOLIA_RPC_URL` | No | Sepolia RPC endpoint (second priority) |
-| `AVALANCHE_FUJI_RPC_URL` | No | Fuji RPC endpoint (third priority; defaults to public Fuji) |
-| `CHAIN_ID` | No | Chain ID; auto-inferred from RPC URL if omitted |
+| `ETH_SEPOLIA_RPC_URL` | No | Sepolia RPC endpoint (second priority; defaults to public Sepolia) |
+| `CHAIN_ID` | No | Chain ID; auto-inferred from RPC URL if omitted (Fuji: 43113, Sepolia: 11155111) |
 | `PORT` | No | Server port (default: `3001`) |
 | `NODE_ENV` | No | Environment name (default: `development`) |
 | `MIN_RATIO` | No | Minimum upload/download ratio for access (default: `0.5`) |
 | `TIMESTAMP_WINDOW_SECONDS` | No | Receipt freshness window in seconds (default: `300`) |
+| `TRACKER_PORT` | No | BitTorrent tracker HTTP/WebSocket port (default: `8000`) |
 
 ## API Endpoints
 
@@ -177,7 +177,7 @@ Returns `{ "status": "ok", "timestamp": "..." }`. Used by load balancers and CI 
 
 | Script | Description |
 |---|---|
-| `npm run deploy` | Full initial deployment (factory + first tracker) |
+| `npm run deploy` | **Recommended:** Full initial deployment (factory + first tracker) |
 | `npm run migrate` | Controlled migration to a new ReputationTracker |
 | `npm run status` | Show current contract info, referrer chain, and reputation |
 | `npm test` | Run the Jest test suite |
@@ -186,6 +186,31 @@ Returns `{ "status": "ok", "timestamp": "..." }`. Used by load balancers and CI 
 | `npm run start` | Start the server (production) |
 | `npm run register` | Register the deployer wallet via the running API |
 | `npm run announce` | Test announce against the running tracker |
+
+## Quick Start
+
+See [SETUP_GUIDE.md](../SETUP_GUIDE.md) for complete step-by-step instructions.
+
+### Minimal Setup
+
+```bash
+# 1. Install dependencies
+npm install
+
+# 2. Configure environment
+cp .env.example .env
+# Edit .env and set DEPLOYER_PRIVATE_KEY, RPC_URL, ADMIN_SECRET
+
+# 3. Build contracts (if not already done)
+cd ../contracts && forge build && cd ../backend
+
+# 4. Deploy contracts
+npm run deploy
+# Copy the output addresses into .env
+
+# 5. Start server
+npm run dev
+```
 
 ## Running the Server
 

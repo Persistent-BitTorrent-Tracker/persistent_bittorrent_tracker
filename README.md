@@ -85,29 +85,37 @@ cp .env.example backend/.env
 
 ### Smart Contract Deployment
 
+**Recommended:** Use the backend deployment scripts for full functionality:
+
 ```bash
-cd contracts
+cd backend
 
-# Build contracts
-forge build
+# Build contracts first
+cd ../contracts && forge build && cd ../backend
 
-# Run tests (12 tests: registration, ratios, migration, factory)
-forge test
+# Run tests
+cd ../contracts && forge test && cd ../backend  # 19 contract tests
+npm test                                         # 27 backend tests
 
 # Deploy RepFactory + first ReputationTracker
-make deploy-fuji      # Avalanche Fuji (chain 43113)
-make deploy-sepolia   # Ethereum Sepolia (chain 11155111)
+npm run deploy
 # Outputs:
 #   RepFactory: 0x...
-#   First ReputationTracker: 0x...
+#   ReputationTracker: 0x...
 ```
 
 After deployment, copy the addresses into `backend/.env`:
 
 ```env
 FACTORY_ADDRESS=0x<RepFactory address>
-REPUTATION_TRACKER_ADDRESS=0x<First ReputationTracker address>
-ADMIN_SECRET=<a strong random secret>
+REPUTATION_TRACKER_ADDRESS=0x<ReputationTracker address>
+ADMIN_SECRET=<generate with: openssl rand -hex 32>
+```
+
+**Alternative:** Basic Foundry deployment (no factory, no migration support):
+```bash
+cd contracts
+make deploy  # Deploys single ReputationTracker only
 ```
 
 ### Backend Server
