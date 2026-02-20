@@ -153,13 +153,13 @@ contract ReputationTrackerTest is Test {
 
     function test_Factory_OnlyOwnerCanDeploy() public {
         vm.prank(address(0xdead));
-        vm.expectRevert("Unauthorized");
+        vm.expectRevert(RepFactory.Unauthorized.selector);
         factory.deployNewTracker(address(0));
     }
 
     function test_Factory_AddValidTracker() public {
         address validTrackerAddr = address(0xABCD);
-        factory.addValidTracker(validTrackerAddr);
+        factory.addValidTracker(validTrackerAddr, bytes32(0));
         assertTrue(factory.isValidTracker(validTrackerAddr));
 
         // valid tracker can now deploy
