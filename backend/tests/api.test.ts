@@ -16,6 +16,7 @@ jest.mock("../utils/contract", () => ({
   getUserReputation: jest.fn(),
   getUserRatio: jest.fn(),
   updateReputation: jest.fn(),
+  migrateFrom: jest.fn(),
   formatRatio: (ratioScaled: bigint): number => {
     if (ratioScaled === ethers.MaxUint256) return Infinity;
     return Number(ratioScaled) / 1e18;
@@ -35,6 +36,7 @@ const mockRegisterUser = jest.mocked(contractUtils.registerUser);
 const mockGetUserReputation = jest.mocked(contractUtils.getUserReputation);
 const mockGetUserRatio = jest.mocked(contractUtils.getUserRatio);
 const mockUpdateReputation = jest.mocked(contractUtils.updateReputation);
+const mockMigrateFrom = jest.mocked(contractUtils.migrateFrom);
 
 // ── Helpers ────────────────────────────────────────────────────────────────
 
@@ -47,11 +49,9 @@ const INITIAL_CREDIT = 1_073_741_824n; // 1 GiB
 
 function mockReputation(uploadBytes: bigint, downloadBytes: bigint) {
   return {
-    publicKey: wallet.address,
     uploadBytes,
     downloadBytes,
-    registeredAt: 0n,
-    exists: true,
+    lastUpdated: 1n,
   };
 }
 
@@ -284,5 +284,64 @@ describe("POST /announce", () => {
     const res = await request(app).post("/announce").send(body);
     expect(res.status).toBe(200);
     expect(res.body.status).toBe("allowed");
+  });
+});
+
+// ── POST /migrate ──────────────────────────────────────────────────────────
+
+describe("POST /migrate", () => {
+  const ADMIN_SECRET = "test-admin-secret";
+  const OLD_CONTRACT = "0x0000000000000000000000000000000000000001";
+  const NEW_CONTRACT = "0x0000000000000000000000000000000000000003";
+
+  beforeEach(() => {
+    jest.clearAllMocks();
+  });
+
+  it("returns 401 without Authorization header", async () => {
+    const res = await request(app).post("/migrate").send({});
+    expect(res.status).toBe(401);
+  });
+
+  it("returns 401 with wrong secret", async () => {
+    const res = await request(app)
+      .post("/migrate")
+      .set("Authorization", "Bearer wrong-secret")
+      .send({});
+    expect(res.status).toBe(401);
+  });
+
+  it("deploys new tracker and returns 200 with correct secret", async () => {
+    mockMigrateFrom.mockResolvedValue(NEW_CONTRACT);
+    const res = await request(app)
+      .post("/migrate")
+      .set("Authorization", `Bearer ${ADMIN_SECRET}`)
+      .send({ oldContract: OLD_CONTRACT });
+    expect(res.status).toBe(200);
+    expect(res.body.success).toBe(true);
+    expect(res.body.newContract).toBe(NEW_CONTRACT);
+    expect(res.body.oldContract).toBe(OLD_CONTRACT);
+    expect(mockMigrateFrom).toHaveBeenCalledWith(OLD_CONTRACT);
+  });
+
+  it("uses configured contractAddress when oldContract is omitted", async () => {
+    mockMigrateFrom.mockResolvedValue(NEW_CONTRACT);
+    const res = await request(app)
+      .post("/migrate")
+      .set("Authorization", `Bearer ${ADMIN_SECRET}`)
+      .send({});
+    expect(res.status).toBe(200);
+    expect(mockMigrateFrom).toHaveBeenCalledWith(
+      "0x0000000000000000000000000000000000000001"
+    );
+  });
+
+  it("returns 500 when migration fails", async () => {
+    mockMigrateFrom.mockRejectedValue(new Error("on-chain error"));
+    const res = await request(app)
+      .post("/migrate")
+      .set("Authorization", `Bearer ${ADMIN_SECRET}`)
+      .send({ oldContract: OLD_CONTRACT });
+    expect(res.status).toBe(500);
   });
 });

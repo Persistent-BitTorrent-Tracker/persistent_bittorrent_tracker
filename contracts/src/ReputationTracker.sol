@@ -1,166 +1,79 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.13;
+pragma solidity ^0.8.20;
 
-/**
- * @title ReputationTracker
- * @notice Persistent, on-chain reputation storage for the PBTS system.
- *
- * Only the tracker server (contract owner) can register users and update
- * reputation. Anyone can read reputation data — public transparency.
- *
- * New users receive an initial upload credit (1 GiB) so they can begin
- * downloading immediately without having to seed first.
- */
 contract ReputationTracker {
-    // ── Types ────────────────────────────────────────────────────────────
+    address public immutable OWNER;
+    address public immutable REFERRER; // single-hop inheritance
+    address public tracker; // current authorized tracker backend
 
     struct UserReputation {
-        address publicKey;
         uint256 uploadBytes;
         uint256 downloadBytes;
-        uint256 registeredAt;
-        bool exists;
+        uint256 lastUpdated;
     }
 
-    // ── State ────────────────────────────────────────────────────────────
+    mapping(address => UserReputation) public users;
 
-    address public owner;
-    uint256 public constant INITIAL_UPLOAD_CREDIT = 1_073_741_824; // 1 GiB
-
-    mapping(address => UserReputation) private users;
-    address[] private registeredUsers;
-
-    // ── Events ───────────────────────────────────────────────────────────
+    uint256 public constant INITIAL_CREDIT = 1_073_741_824; // 1 GB
 
     event UserRegistered(address indexed user, uint256 timestamp);
-    event ReputationUpdated(
-        address indexed user,
-        uint256 uploadDelta,
-        uint256 downloadDelta,
-        uint256 newUploadBytes,
-        uint256 newDownloadBytes
-    );
-    event OwnershipTransferred(address indexed previousOwner, address indexed newOwner);
+    event ReputationUpdated(address indexed user, uint256 uploadDelta, uint256 downloadDelta);
 
-    // ── Errors ───────────────────────────────────────────────────────────
+    constructor(address _referrer) {
+        OWNER = msg.sender;
+        REFERRER = _referrer;
+        tracker = msg.sender; // deployer becomes initial tracker
+    }
 
-    error NotOwner();
-    error AlreadyRegistered();
-    error NotRegistered();
-    error ZeroAddress();
-
-    // ── Modifiers ────────────────────────────────────────────────────────
-
-    modifier onlyOwner() {
-        if (msg.sender != owner) revert NotOwner();
+    modifier onlyTracker() {
+        _onlyTracker();
         _;
     }
 
-    // ── Constructor ──────────────────────────────────────────────────────
-
-    constructor() {
-        owner = msg.sender;
+    function _onlyTracker() internal view {
+        require(msg.sender == tracker, "Only tracker");
     }
 
-    // ── Write functions ──────────────────────────────────────────────────
-
-    /**
-     * @notice Register a new user with an initial upload credit.
-     * @param user The Ethereum address to register.
-     * @return true on success.
-     */
-    function register(address user) external onlyOwner returns (bool) {
-        if (user == address(0)) revert ZeroAddress();
-        if (users[user].exists) revert AlreadyRegistered();
-
-        users[user] = UserReputation({
-            publicKey: user,
-            uploadBytes: INITIAL_UPLOAD_CREDIT,
-            downloadBytes: 0,
-            registeredAt: block.timestamp,
-            exists: true
-        });
-
-        registeredUsers.push(user);
-
-        emit UserRegistered(user, block.timestamp);
+    function register(address userKey) external onlyTracker returns (bool) {
+        if (users[userKey].lastUpdated > 0) revert("Already registered");
+        users[userKey] = UserReputation({ uploadBytes: INITIAL_CREDIT, downloadBytes: 0, lastUpdated: block.timestamp });
+        emit UserRegistered(userKey, block.timestamp);
         return true;
     }
 
-    /**
-     * @notice Update a user's upload and/or download counters.
-     * @param user           The user whose reputation to update.
-     * @param uploadDelta    Bytes to add to uploadBytes.
-     * @param downloadDelta  Bytes to add to downloadBytes.
-     */
-    function updateReputation(
-        address user,
-        uint256 uploadDelta,
-        uint256 downloadDelta
-    ) external onlyOwner {
-        if (!users[user].exists) revert NotRegistered();
-
-        users[user].uploadBytes += uploadDelta;
-        users[user].downloadBytes += downloadDelta;
-
-        emit ReputationUpdated(
-            user,
-            uploadDelta,
-            downloadDelta,
-            users[user].uploadBytes,
-            users[user].downloadBytes
-        );
-    }
-
-    /**
-     * @notice Transfer ownership of the contract.
-     * @param newOwner The address of the new owner.
-     */
-    function transferOwnership(address newOwner) external onlyOwner {
-        if (newOwner == address(0)) revert ZeroAddress();
-        emit OwnershipTransferred(owner, newOwner);
-        owner = newOwner;
-    }
-
-    // ── Read functions ───────────────────────────────────────────────────
-
-    /**
-     * @notice Check whether a user is registered.
-     */
-    function isRegistered(address user) external view returns (bool) {
-        return users[user].exists;
-    }
-
-    /**
-     * @notice Get the full reputation struct for a user.
-     */
-    function getReputation(address user) external view returns (UserReputation memory) {
-        return users[user];
-    }
-
-    /**
-     * @notice Get the upload/download ratio scaled by 1e18.
-     * @dev Returns type(uint256).max when downloadBytes == 0 (infinite ratio).
-     *      This matches the backend's expectation (formatRatio treats MaxUint256 as Infinity).
-     */
-    function getRatio(address user) external view returns (uint256) {
+    function updateReputation(address user, uint256 uploadDelta, uint256 downloadDelta) external onlyTracker {
         UserReputation storage rep = users[user];
-        if (!rep.exists) return 0;
-        if (rep.downloadBytes == 0) return type(uint256).max;
-        return (rep.uploadBytes * 1e18) / rep.downloadBytes;
+        if (rep.lastUpdated == 0) {
+            rep.uploadBytes = INITIAL_CREDIT;
+        }
+        rep.uploadBytes += uploadDelta;
+        rep.downloadBytes += downloadDelta;
+        rep.lastUpdated = block.timestamp;
+        emit ReputationUpdated(user, uploadDelta, downloadDelta);
     }
 
-    /**
-     * @notice Get the total number of registered users.
-     */
-    function getUserCount() external view returns (uint256) {
-        return registeredUsers.length;
+    // getReputation with referrer delegation (single hop)
+    function getReputation(address user) external view returns (UserReputation memory) {
+        UserReputation memory rep = users[user];
+        if (rep.lastUpdated > 0 || REFERRER == address(0)) {
+            return rep;
+        }
+        return ReputationTracker(REFERRER).getReputation(user);
     }
 
-    /**
-     * @notice Get a registered user's address by index.
-     */
-    function getUserAtIndex(uint256 index) external view returns (address) {
-        return registeredUsers[index];
+    // getRatio with referrer delegation (single hop)
+    function getRatio(address user) external view returns (uint256) {
+        UserReputation memory rep = users[user];
+        if (rep.lastUpdated > 0 || REFERRER == address(0)) {
+            if (rep.downloadBytes == 0) return type(uint256).max;
+            return (rep.uploadBytes * 1e18) / rep.downloadBytes;
+        }
+        return ReputationTracker(REFERRER).getRatio(user);
+    }
+
+    // Allow owner to change tracker address (for migration)
+    function setTracker(address newTracker) external {
+        require(msg.sender == OWNER, "Only owner");
+        tracker = newTracker;
     }
 }

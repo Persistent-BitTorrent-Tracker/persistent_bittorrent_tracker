@@ -4,13 +4,25 @@ import config from "../config/index";
 // Minimal ABI — only the functions the server needs to call.
 const REPUTATION_TRACKER_ABI = [
   // Write
-  "function register(address user) external returns (bool)",
+  "function register(address userKey) external returns (bool)",
   "function updateReputation(address user, uint256 uploadDelta, uint256 downloadDelta) external",
+  "function setTracker(address newTracker) external",
 
   // Read
-  "function isRegistered(address user) external view returns (bool)",
-  "function getReputation(address user) external view returns (tuple(address publicKey, uint256 uploadBytes, uint256 downloadBytes, uint256 registeredAt, bool exists))",
+  "function getReputation(address user) external view returns (tuple(uint256 uploadBytes, uint256 downloadBytes, uint256 lastUpdated))",
   "function getRatio(address user) external view returns (uint256)",
+];
+
+// Minimal ABI for the RepFactory contract.
+const REP_FACTORY_ABI = [
+  "function deployNewTracker(address _referrer) external returns (address)",
+  "function addValidTracker(address tracker, bytes32 attestation) external",
+  "function removeValidTracker(address tracker) external",
+  "function isValidTracker(address) external view returns (bool)",
+  "function attestationHash(address) external view returns (bytes32)",
+  "event NewReputationTracker(address indexed newContract, address indexed referrer, address indexed newTracker)",
+  "event TrackerAdded(address indexed tracker, bytes32 attestation)",
+  "event TrackerRemoved(address indexed tracker)",
 ];
 
 let _provider: ethers.JsonRpcProvider | null = null;
@@ -31,9 +43,9 @@ function getSigner(): ethers.Wallet {
 }
 
 /**
- * Return a contract instance connected to the tracker signer (for writes)
- * or to the plain provider (for reads, when `readonly` is true).
- * A new instance is created each call to guarantee the correct signer/provider.
+ * Return a ReputationTracker contract instance connected to the tracker signer
+ * (for writes) or to the plain provider (for reads, when `readonly` is true).
+ * Always uses the current CURRENT_CONTRACT_ADDRESS from config.
  */
 export function getContract(readonly = false): ethers.Contract {
   return new ethers.Contract(
@@ -43,16 +55,25 @@ export function getContract(readonly = false): ethers.Contract {
   );
 }
 
+/**
+ * Return a RepFactory contract instance.
+ */
+export function getFactory(readonly = false): ethers.Contract {
+  return new ethers.Contract(
+    config.factoryAddress,
+    REP_FACTORY_ABI,
+    readonly ? getProvider() : getSigner()
+  );
+}
+
 // -------------------------------------------------------------------------
 // Typed wrappers
 // -------------------------------------------------------------------------
 
 export interface UserReputation {
-  publicKey: string;
   uploadBytes: bigint;
   downloadBytes: bigint;
-  registeredAt: bigint;
-  exists: boolean;
+  lastUpdated: bigint;
 }
 
 /** Register a new user on-chain. Throws if already registered or call fails. */
@@ -64,20 +85,22 @@ export async function registerUser(userAddress: string): Promise<ethers.Transact
   return receipt;
 }
 
-/** Check whether a user is registered without spending gas. */
+/**
+ * Check whether a user is registered without spending gas.
+ * A user is considered registered if their lastUpdated timestamp is non-zero.
+ */
 export async function isUserRegistered(userAddress: string): Promise<boolean> {
-  return getContract(true)["isRegistered"](userAddress);
+  const rep = await getContract(true)["getReputation"](userAddress);
+  return (rep.lastUpdated as bigint) > 0n;
 }
 
-/** Read full reputation from the chain. */
+/** Read full reputation from the chain (delegates to referrer if needed). */
 export async function getUserReputation(userAddress: string): Promise<UserReputation> {
   const rep = await getContract(true)["getReputation"](userAddress);
   return {
-    publicKey: rep.publicKey as string,
     uploadBytes: rep.uploadBytes as bigint,
     downloadBytes: rep.downloadBytes as bigint,
-    registeredAt: rep.registeredAt as bigint,
-    exists: rep.exists as boolean,
+    lastUpdated: rep.lastUpdated as bigint,
   };
 }
 
@@ -104,6 +127,32 @@ export async function updateReputation(
   const receipt = await tx.wait();
   if (!receipt) throw new Error("Transaction receipt is null");
   return receipt;
+}
+
+/**
+ * Deploy a new ReputationTracker via the RepFactory, pointing its referrer at
+ * the old contract so that reputation is preserved.  Returns the address of
+ * the newly deployed tracker.
+ */
+export async function migrateFrom(oldContract: string): Promise<string> {
+  const factory = getFactory();
+  const tx: ethers.TransactionResponse = await factory["deployNewTracker"](oldContract);
+  const receipt = await tx.wait();
+  if (!receipt) throw new Error("Migration transaction receipt is null");
+
+  // Parse the NewReputationTracker event to retrieve the deployed address.
+  const iface = new ethers.Interface(REP_FACTORY_ABI);
+  for (const log of receipt.logs) {
+    try {
+      const parsed = iface.parseLog({ topics: log.topics as string[], data: log.data });
+      if (parsed && parsed.name === "NewReputationTracker") {
+        return parsed.args[0] as string;
+      }
+    } catch {
+      // skip logs from other contracts
+    }
+  }
+  throw new Error("NewReputationTracker event not found in migration receipt");
 }
 
 /**
