@@ -16,9 +16,13 @@ const REPUTATION_TRACKER_ABI = [
 // Minimal ABI for the RepFactory contract.
 const REP_FACTORY_ABI = [
   "function deployNewTracker(address _referrer) external returns (address)",
-  "function addValidTracker(address tracker) external",
+  "function addValidTracker(address tracker, bytes32 attestation) external",
+  "function removeValidTracker(address tracker) external",
   "function isValidTracker(address) external view returns (bool)",
+  "function attestationHash(address) external view returns (bytes32)",
   "event NewReputationTracker(address indexed newContract, address indexed referrer, address indexed newTracker)",
+  "event TrackerAdded(address indexed tracker, bytes32 attestation)",
+  "event TrackerRemoved(address indexed tracker)",
 ];
 
 let _provider: ethers.JsonRpcProvider | null = null;
