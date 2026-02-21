@@ -3,7 +3,7 @@ pragma solidity ^0.8.20;
 
 contract ReputationTracker {
     address public immutable REFERRER; // single-hop inheritance
-    address public immutable tracker;  // authorized tracker backend (set once, never changes)
+    address public immutable TRACKER;  // authorized tracker backend (set once, never changes)
 
     struct UserReputation {
         uint256 uploadBytes;
@@ -19,7 +19,7 @@ contract ReputationTracker {
     event ReputationUpdated(address indexed user, uint256 uploadDelta, uint256 downloadDelta);
 
     constructor(address _tracker, address _referrer) {
-        tracker = _tracker;
+        TRACKER = _tracker;
         REFERRER = _referrer;
     }
 
@@ -29,7 +29,7 @@ contract ReputationTracker {
     }
 
     function _onlyTracker() internal view {
-        require(msg.sender == tracker, "Only tracker");
+        require(msg.sender == TRACKER, "Only tracker");
     }
 
     function register(address userKey) external onlyTracker returns (bool) {

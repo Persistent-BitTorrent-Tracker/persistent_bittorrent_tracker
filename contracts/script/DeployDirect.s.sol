@@ -12,7 +12,7 @@ contract DeployDirect is Script {
         vm.startBroadcast();
         ReputationTracker tracker = new ReputationTracker(msg.sender, address(0));
         console.log("ReputationTracker:", address(tracker));
-        console.log("tracker (backend):", tracker.tracker());
+        console.log("tracker (backend):", tracker.TRACKER());
         vm.stopBroadcast();
     }
 }

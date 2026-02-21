@@ -74,14 +74,14 @@ contract ReputationTrackerTest is Test {
     // ── Caller becomes permanent tracker ──────────────────────────────────────
 
     function test_CallerIsPermanentTracker() public {
-        assertEq(tracker1.tracker(), address(this));
+        assertEq(tracker1.TRACKER(), address(this));
     }
 
     // ── Tracker is immutable (no setTracker) ─────────────────────────────────
 
     function test_TrackerIsImmutable() public view {
-        // tracker is set at construction and cannot be changed — there is no setTracker function
-        assertEq(tracker1.tracker(), address(this));
+        // TRACKER is set at construction and cannot be changed — there is no setTracker function
+        assertEq(tracker1.TRACKER(), address(this));
     }
 
     // ── Anyone can deploy via factory ─────────────────────────────────────────
@@ -93,7 +93,7 @@ contract ReputationTrackerTest is Test {
         assertTrue(newT != address(0));
 
         ReputationTracker t = ReputationTracker(newT);
-        assertEq(t.tracker(), randomUser);
+        assertEq(t.TRACKER(), randomUser);
     }
 
     // ── Migration: reputation preserved across tracker contracts ─────────────
