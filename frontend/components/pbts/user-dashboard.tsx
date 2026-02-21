@@ -133,8 +133,16 @@ export function UserDashboard({ onBack }: UserDashboardProps) {
       setUploadBytes(parseInt(rep.uploadBytes, 10))
       setDownloadBytes(parseInt(rep.downloadBytes, 10))
       setRatio(rep.ratio ?? Infinity)
+      if (rep.isRegistered) {
+        setIsRegistered(true)
+        addRegisteredWallet(address)
+      }
     } catch {
-      // Backend may be offline
+      // Backend may be offline — check localStorage for prior registration
+      const registered = getRegisteredWallets().includes(address.toLowerCase())
+      if (registered) {
+        setIsRegistered(true)
+      }
       setUploadBytes(0)
       setDownloadBytes(0)
       setRatio(0)
@@ -144,7 +152,20 @@ export function UserDashboard({ onBack }: UserDashboardProps) {
   async function loadTorrents() {
     setIsLoadingTorrents(true)
     const data = await getTorrents()
-    setTorrents(data.length > 0 ? data : getDemoTorrents())
+    if (data.length > 0) {
+      // Enrich backend torrents with sizes from demo data so the UI shows
+      // file sizes and the announce simulation can compute ratio changes.
+      const demoMap = new Map(getDemoTorrents().map((d) => [d.infohash, d]))
+      const defaultSizes = [256, 512, 128, 384, 768] // MB
+      const enriched = data.map((t, i) => {
+        const demo = demoMap.get(t.infohash)
+        if (demo) return { ...demo, ...t, size: demo.size, name: demo.name, category: demo.category }
+        return { ...t, name: t.description || `Torrent ${t.infohash.slice(0, 8)}`, size: defaultSizes[i % defaultSizes.length] * 1024 * 1024, category: "other" as const }
+      })
+      setTorrents(enriched as DemoTorrent[])
+    } else {
+      setTorrents(getDemoTorrents())
+    }
     setIsLoadingTorrents(false)
   }
 
