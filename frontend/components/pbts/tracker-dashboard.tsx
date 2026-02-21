@@ -20,6 +20,7 @@ import { useTheme } from "next-themes"
 import {
   checkHealth,
   getAllUsers,
+  getReputation,
   migrateContract,
   type ReputationResponse,
 } from "@/lib/api"
@@ -30,6 +31,17 @@ import {
   getRatioLabel,
   MOCK_CONTRACT_ADDRESS,
 } from "@/lib/pbts-types"
+
+const REGISTERED_WALLETS_KEY = "nt-registered-wallets"
+
+function getRegisteredWallets(): string[] {
+  try {
+    const raw = localStorage.getItem(REGISTERED_WALLETS_KEY)
+    return raw ? JSON.parse(raw) : []
+  } catch {
+    return []
+  }
+}
 
 interface TrackerDashboardProps {
   onBack: () => void
@@ -51,10 +63,47 @@ export function TrackerDashboard({ onBack }: TrackerDashboardProps) {
   async function loadUsers() {
     setIsLoadingUsers(true)
     try {
-      const data = await getAllUsers()
-      setUsers(data)
+      const backendUsers = await getAllUsers()
+
+      // Merge locally-registered wallets not already in backend results
+      const localWallets = getRegisteredWallets()
+      const backendAddresses = new Set(
+        backendUsers.map((u) => u.address.toLowerCase())
+      )
+      const missingWallets = localWallets.filter(
+        (addr) => !backendAddresses.has(addr.toLowerCase())
+      )
+
+      const extraUsers = await Promise.all(
+        missingWallets.map(async (address) => {
+          try {
+            return await getReputation(address)
+          } catch {
+            return {
+              address,
+              uploadBytes: "0",
+              downloadBytes: "0",
+              ratio: null,
+              lastUpdated: 0,
+              isRegistered: true,
+            } as ReputationResponse
+          }
+        })
+      )
+
+      setUsers([...backendUsers, ...extraUsers])
     } catch {
-      // Backend may be offline
+      // Backend offline — fall back to localStorage wallets
+      const localWallets = getRegisteredWallets()
+      const fallbackUsers: ReputationResponse[] = localWallets.map((address) => ({
+        address,
+        uploadBytes: "0",
+        downloadBytes: "0",
+        ratio: null,
+        lastUpdated: 0,
+        isRegistered: true,
+      }))
+      setUsers(fallbackUsers)
     }
     setIsLoadingUsers(false)
   }

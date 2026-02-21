@@ -57,6 +57,26 @@ import { TorrentsBrowser } from "./torrents-browser"
 import { AgentDemo } from "./agent/agent-demo"
 import { MarketplaceDashboard } from "./marketplace-dashboard"
 
+const REGISTERED_WALLETS_KEY = "nt-registered-wallets"
+
+function getRegisteredWallets(): string[] {
+  try {
+    const raw = localStorage.getItem(REGISTERED_WALLETS_KEY)
+    return raw ? JSON.parse(raw) : []
+  } catch {
+    return []
+  }
+}
+
+function addRegisteredWallet(address: string): void {
+  const wallets = getRegisteredWallets()
+  const normalized = address.toLowerCase()
+  if (!wallets.includes(normalized)) {
+    wallets.push(normalized)
+    localStorage.setItem(REGISTERED_WALLETS_KEY, JSON.stringify(wallets))
+  }
+}
+
 type UserTab = "dashboard" | "torrents" | "marketplace" | "agent"
 
 interface UserDashboardProps {
@@ -113,13 +133,11 @@ export function UserDashboard({ onBack }: UserDashboardProps) {
       setUploadBytes(parseInt(rep.uploadBytes, 10))
       setDownloadBytes(parseInt(rep.downloadBytes, 10))
       setRatio(rep.ratio ?? Infinity)
-      setIsRegistered(rep.isRegistered)
     } catch {
-      // Backend may be offline — show as unregistered
+      // Backend may be offline
       setUploadBytes(0)
       setDownloadBytes(0)
       setRatio(0)
-      setIsRegistered(false)
     }
   }
 
@@ -264,12 +282,14 @@ export function UserDashboard({ onBack }: UserDashboardProps) {
         description: "1 GB initial credit granted. You can now announce torrents.",
       })
       setIsRegistered(true)
+      addRegisteredWallet(wallet.address)
       await loadReputation(wallet.address)
     } catch (err: unknown) {
       const errMsg = err instanceof Error ? err.message : String(err)
       if (errMsg.toLowerCase().includes("already registered")) {
         toast.info("Already registered", { description: "Your account is already active." })
         setIsRegistered(true)
+        addRegisteredWallet(wallet.address)
         await loadReputation(wallet.address)
       } else {
         // Backend offline — simulate registration locally with 1 GB credit
@@ -278,6 +298,7 @@ export function UserDashboard({ onBack }: UserDashboardProps) {
         setDownloadBytes(0)
         setRatio(Infinity)
         setIsRegistered(true)
+        addRegisteredWallet(wallet.address)
         toast.success("Registered (simulated)!", {
           description: "1 GB initial credit granted. You can now announce torrents.",
         })
@@ -507,8 +528,34 @@ export function UserDashboard({ onBack }: UserDashboardProps) {
           </Card>
         )}
 
-        {/* Reputation display */}
-        {wallet.address && (
+        {/* Registration prompt — shown when wallet connected but not yet registered */}
+        {wallet.address && !isRegistered && (
+          <Card className="border-primary/20 bg-primary/5">
+            <CardContent className="pt-6 flex flex-col items-center gap-4">
+              <Shield className="h-10 w-10 text-primary" />
+              <h3 className="text-lg font-semibold text-foreground">Register Your Wallet</h3>
+              <p className="text-sm text-muted-foreground text-center max-w-md">
+                Sign a message with your wallet to register on the Neural Torrent network.
+                You will receive 1 GB of initial upload credit.
+              </p>
+              <Button
+                onClick={handleRegister}
+                disabled={isRegistering}
+                size="lg"
+                className="gap-2"
+              >
+                {isRegistering ? <Loader2 className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />}
+                {isRegistering ? "Registering..." : "Register Now"}
+              </Button>
+              <p className="text-xs text-muted-foreground text-center">
+                Server pays gas fees — no native tokens required.
+              </p>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Reputation display — only shown after registration */}
+        {wallet.address && isRegistered && (
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
             <Card className="border-border bg-card">
               <CardHeader className="pb-2">
@@ -586,7 +633,7 @@ export function UserDashboard({ onBack }: UserDashboardProps) {
         )}
 
         {/* Action cards: Register account + Register content */}
-        {wallet.address && (
+        {wallet.address && isRegistered && (
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             {/* Register account */}
             <Card className="border-border bg-card">

@@ -24,7 +24,7 @@ export function LandingPage({ onSelectRole }: LandingPageProps) {
     {
       icon: Shield,
       title: "Cryptographic Attestation",
-      description: "AI agents sign receipts for received data pieces. Verifiable and tamper-proof.",
+      description: "TEE sign receipts for received data pieces. Verifiable and tamper-proof.",
     },
     {
       icon: ArrowUpDown,
@@ -104,7 +104,7 @@ export function LandingPage({ onSelectRole }: LandingPageProps) {
               className="h-24 flex-col gap-3 bg-primary text-primary-foreground hover:bg-primary/90"
             >
               <User className="h-6 w-6" />
-              <span className="text-sm font-semibold">User</span>
+              <span className="text-sm font-semibold">User/Agent</span>
             </Button>
             <Button
               size="lg"
@@ -117,7 +117,7 @@ export function LandingPage({ onSelectRole }: LandingPageProps) {
             </Button>
           </div>
           <p className="text-xs text-muted-foreground text-center mt-2">
-            <strong>User:</strong> View your ratio, announce torrents, trade data in the marketplace.
+            <strong>User/Agent:</strong> View your ratio, announce torrents, trade data in the marketplace.
             <br />
             <strong>Tracker:</strong> Manage registered users, deploy new contracts.
           </p>
