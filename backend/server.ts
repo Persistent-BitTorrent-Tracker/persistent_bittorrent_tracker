@@ -16,7 +16,11 @@ import { getContentPrice, SEPOLIA_TOKENS } from "./marketplace/pricingStore";
 const app = express();
 
 // ── Middleware ─────────────────────────────────────────────────────────────
-app.use(cors());
+app.use(cors({
+  origin: "*",
+  methods: ["GET", "POST"],
+  allowedHeaders: ["Content-Type", "Authorization"],
+}));
 app.use(express.json());
 
 // ── Routes ─────────────────────────────────────────────────────────────────
@@ -97,6 +101,83 @@ app.get("/users", async (_req: Request, res: Response): Promise<void> => {
 // Health check — useful for load balancers and CI smoke tests.
 app.get("/health", (_req, res) => {
   res.json({ status: "ok", timestamp: new Date().toISOString() });
+});
+
+/**
+ * GET /agent-tools
+ *
+ * Tool discovery endpoint for autonomous agents (e.g. CloudLLM-powered).
+ * Returns a machine-readable description of every available API action so
+ * that an agent can register itself, announce interest in datasets, submit
+ * signed piece receipts, and monitor its own reputation — all without human
+ * intervention.
+ */
+app.get("/agent-tools", (_req: Request, res: Response): void => {
+  res.json({
+    tools: [
+      {
+        name: "register",
+        method: "POST",
+        path: "/register",
+        description: "Register a new peer address on-chain. Requires an EIP-191 signature over the registration message.",
+        body: {
+          userAddress: "string — 0x-prefixed Ethereum address",
+          message: "string — message that was signed",
+          signature: "string — EIP-191 hex signature",
+        },
+      },
+      {
+        name: "announce",
+        method: "POST",
+        path: "/announce",
+        description: "Announce interest in (or departure from) a torrent swarm. Returns peer list when ratio ≥ 1.0.",
+        body: {
+          userAddress: "string — 0x-prefixed Ethereum address",
+          infohash: "string — 0x-prefixed 32-byte torrent infohash",
+          event: "string — 'started' | 'stopped' | 'completed'",
+          message: "string — message that was signed",
+          signature: "string — EIP-191 hex signature",
+        },
+      },
+      {
+        name: "report",
+        method: "POST",
+        path: "/report",
+        description: "Submit a signed piece receipt to update upload/download reputation on-chain.",
+        body: {
+          infohash: "string — 0x-prefixed 32-byte torrent infohash",
+          sender: "string — 0x-prefixed Ethereum address of data sender",
+          receiver: "string — 0x-prefixed Ethereum address of data receiver",
+          pieceHash: "string — 0x-prefixed 32-byte hash of the piece",
+          pieceIndex: "number — index of the piece within the torrent",
+          pieceSize: "number — size of the piece in bytes",
+          timestamp: "number — Unix timestamp (must be within 5 minutes)",
+          signature: "string — receiver's signature over the solidityPackedKeccak256 hash",
+        },
+      },
+      {
+        name: "reputation",
+        method: "GET",
+        path: "/reputation/:address",
+        description: "Query on-chain reputation (upload bytes, download bytes, ratio) for any address.",
+        params: {
+          address: "string — 0x-prefixed Ethereum address",
+        },
+      },
+      {
+        name: "users",
+        method: "GET",
+        path: "/users",
+        description: "List all known registered addresses with their on-chain reputation.",
+      },
+      {
+        name: "torrents",
+        method: "GET",
+        path: "/torrents",
+        description: "List all active torrents in the swarm with peer counts and marketplace pricing.",
+      },
+    ],
+  });
 });
 
 /**

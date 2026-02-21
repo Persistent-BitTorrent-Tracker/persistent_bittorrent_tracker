@@ -65,6 +65,35 @@ describe("GET /health", () => {
   });
 });
 
+// ── /agent-tools ───────────────────────────────────────────────────────────
+
+describe("GET /agent-tools", () => {
+  it("returns 200 with a non-empty tools array", async () => {
+    const res = await request(app).get("/agent-tools");
+    expect(res.status).toBe(200);
+    expect(Array.isArray(res.body.tools)).toBe(true);
+    expect(res.body.tools.length).toBeGreaterThan(0);
+  });
+
+  it("includes register, announce, report, and reputation tools", async () => {
+    const res = await request(app).get("/agent-tools");
+    const names: string[] = res.body.tools.map((t: { name: string }) => t.name);
+    expect(names).toContain("register");
+    expect(names).toContain("announce");
+    expect(names).toContain("report");
+    expect(names).toContain("reputation");
+  });
+
+  it("each tool has name, method, and path fields", async () => {
+    const res = await request(app).get("/agent-tools");
+    for (const tool of res.body.tools as { name: string; method: string; path: string }[]) {
+      expect(typeof tool.name).toBe("string");
+      expect(typeof tool.method).toBe("string");
+      expect(typeof tool.path).toBe("string");
+    }
+  });
+});
+
 // ── POST /register ─────────────────────────────────────────────────────────
 
 describe("POST /register", () => {
