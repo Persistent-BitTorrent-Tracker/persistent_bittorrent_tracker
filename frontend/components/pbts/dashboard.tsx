@@ -9,6 +9,7 @@ import { SimulateTransferModal } from "./simulate-transfer-modal"
 import { AnnounceCard } from "./announce-card"
 import { ActivityFeed } from "./activity-feed"
 import { FilesBrowser } from "./files-browser"
+import { AgentDemo } from "./agent/agent-demo"
 import type { UserReputation, ActivityItem, AnnounceResult, ContractInfo } from "@/lib/pbts-types"
 import { formatBytes, shortenAddress, MOCK_CONTRACT_ADDRESS } from "@/lib/pbts-types"
 import {
@@ -272,6 +273,16 @@ export function Dashboard({ address, onDisconnect }: DashboardProps) {
         >
           Files
         </button>
+        <button
+          onClick={() => setActiveTab("agent")}
+          className={`flex-1 py-2.5 text-sm font-medium text-center transition-colors ${
+            activeTab === "agent"
+              ? "text-primary border-b-2 border-primary"
+              : "text-muted-foreground"
+          }`}
+        >
+          Agent
+        </button>
       </div>
 
       <main className="flex-1 max-w-7xl mx-auto w-full px-4 py-6 flex flex-col gap-6">
@@ -300,11 +311,13 @@ export function Dashboard({ address, onDisconnect }: DashboardProps) {
             {/* Activity feed */}
             <ActivityFeed activities={activities} />
           </>
-        ) : (
+        ) : activeTab === "files" ? (
           <FilesBrowser
             address={address}
             onTransferTriggered={handleFileTransfer}
           />
+        ) : (
+          <AgentDemo />
         )}
       </main>
 

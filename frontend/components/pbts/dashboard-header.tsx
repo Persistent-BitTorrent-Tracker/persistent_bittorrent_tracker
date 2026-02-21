@@ -13,7 +13,7 @@ import { shortenAddress } from "@/lib/pbts-types"
 import { useState } from "react"
 import { useTheme } from "next-themes"
 
-export type DashboardTab = "dashboard" | "files"
+export type DashboardTab = "dashboard" | "files" | "agent"
 
 interface DashboardHeaderProps {
   address: string
@@ -79,6 +79,17 @@ export function DashboardHeader({
               aria-current={activeTab === "files" ? "page" : undefined}
             >
               Files
+            </button>
+            <button
+              onClick={() => onTabChange("agent")}
+              className={`px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${
+                activeTab === "agent"
+                  ? "bg-primary/10 text-primary"
+                  : "text-muted-foreground hover:text-foreground hover:bg-secondary"
+              }`}
+              aria-current={activeTab === "agent" ? "page" : undefined}
+            >
+              Agent
             </button>
           </nav>
         </div>
