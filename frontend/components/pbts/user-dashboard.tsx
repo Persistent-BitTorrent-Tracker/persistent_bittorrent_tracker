@@ -27,6 +27,7 @@ import {
   RefreshCw,
   Users,
   Download,
+  Tag,
   Film,
   Music,
   Package,
@@ -626,23 +627,42 @@ export function UserDashboard({ onBack }: UserDashboardProps) {
                     }
                     const Icon = hasMetadata && t.category ? categoryIcons[t.category] ?? FileIcon : FileIcon
 
+                    const TOKEN_DECIMALS: Record<string, number> = { ETH: 18, WETH: 18, USDC: 6, UNI: 18 }
+                    const formatTokenAmount = (amount: string, symbol: string) => {
+                      const decimals = TOKEN_DECIMALS[symbol] ?? 18
+                      const human = Number(amount) / 10 ** decimals
+                      return human % 1 === 0 ? human.toString() : human.toFixed(decimals === 6 ? 2 : 4).replace(/0+$/, "").replace(/\.$/, "")
+                    }
+
+                    const shortHash = torrent.infohash.length > 16
+                      ? `${torrent.infohash.slice(0, 10)}...${torrent.infohash.slice(-6)}`
+                      : torrent.infohash
+
                     return (
                       <div
                         key={torrent.infohash}
                         className="grid grid-cols-[1fr_100px_90px_100px] lg:grid-cols-[1fr_120px_100px_130px] items-center px-4 py-3 hover:bg-secondary/30 transition-colors"
                       >
-                        {/* Name + infohash */}
+                        {/* Name + infohash + marketplace badges */}
                         <div className="flex items-center gap-3 min-w-0">
                           <div className="h-8 w-8 rounded-md bg-secondary border border-border flex items-center justify-center shrink-0">
                             <Icon className="h-4 w-4 text-muted-foreground" />
                           </div>
                           <div className="flex flex-col min-w-0">
                             <span className="text-sm font-medium text-foreground truncate">
-                              {hasMetadata && t.name ? t.name : `Torrent ${torrent.infohash.slice(0, 8)}...`}
+                              {torrent.description || (hasMetadata && t.name ? t.name : `Torrent ${torrent.infohash.slice(0, 8)}...`)}
                             </span>
-                            <span className="text-[10px] font-mono text-muted-foreground truncate max-w-[120px]">
-                              {torrent.infohash.slice(0, 12)}...
-                            </span>
+                            <div className="flex items-center gap-2">
+                              <span className="text-[10px] font-mono text-muted-foreground truncate max-w-[120px]">
+                                {torrent.infohash.slice(0, 12)}...
+                              </span>
+                              {torrent.listed && torrent.tokenSymbol && torrent.tokenAmount && (
+                                <Badge variant="outline" className="text-[10px] gap-1 font-normal border-chart-4/50 text-chart-4 px-1.5 py-0">
+                                  <Tag className="h-2.5 w-2.5" />
+                                  {formatTokenAmount(torrent.tokenAmount, torrent.tokenSymbol)} {torrent.tokenSymbol}
+                                </Badge>
+                              )}
+                            </div>
                           </div>
                         </div>
 

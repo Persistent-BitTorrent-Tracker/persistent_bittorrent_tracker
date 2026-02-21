@@ -200,6 +200,13 @@ export interface TorrentInfo {
   infohash: string
   peerCount: number
   peers: string[]
+  // Marketplace pricing (present when torrent is listed for sale)
+  listed?: boolean
+  description?: string
+  tokenSymbol?: string
+  tokenAmount?: string
+  sellerAddress?: string
+  priceUSDC?: number | null
 }
 
 /**
@@ -247,4 +254,121 @@ export async function migrateContract(
     throw new Error(message)
   }
   return data as MigrateResponse
+}
+
+// ── Marketplace API ──────────────────────────────────────────────────────
+
+export interface ContentListing {
+  infohash: string
+  sellerAddress: string
+  tokenAddress: string
+  tokenSymbol: string
+  amount: string
+  description: string
+  createdAt: number
+}
+
+export async function getMarketplaceListings(): Promise<ContentListing[]> {
+  try {
+    const res = await fetch(`${BASE_URL}/marketplace/listings`)
+    if (!res.ok) return []
+    const data = (await res.json()) as { listings: ContentListing[] }
+    return data.listings
+  } catch {
+    return []
+  }
+}
+
+export async function setContentPrice(
+  infohash: string,
+  tokenAddress: string,
+  tokenSymbol: string,
+  amount: string,
+  description: string,
+  sellerAddress: string,
+  message: string,
+  signature: string
+): Promise<{ success: boolean; listing: ContentListing }> {
+  return post<{ success: boolean; listing: ContentListing }>("/marketplace/set-price", {
+    infohash, tokenAddress, tokenSymbol, amount, description,
+    sellerAddress, message, signature,
+  })
+}
+
+export interface SwapQuoteResponse {
+  quoteId: string
+  inputToken: string
+  outputToken: string
+  inputAmount: string
+  outputAmount: string
+  exchangeRate: string
+  gasEstimate: string
+  priceImpact: string
+  routeDescription: string
+  rawQuote: unknown
+  noSwapNeeded: boolean
+}
+
+export async function getSwapQuote(
+  infohash: string,
+  buyerAddress: string,
+  payTokenAddress: string
+): Promise<SwapQuoteResponse> {
+  return post<SwapQuoteResponse>("/marketplace/quote", {
+    infohash, buyerAddress, payTokenAddress,
+  })
+}
+
+export interface ApprovalCheckResponse {
+  isApproved: boolean
+  approvalTx: { to: string; data: string; value: string; gasLimit?: string } | null
+  gasFee: string
+}
+
+export async function checkTokenApproval(
+  walletAddress: string,
+  tokenAddress: string,
+  amount: string
+): Promise<ApprovalCheckResponse> {
+  return post<ApprovalCheckResponse>("/marketplace/check-approval", {
+    walletAddress, tokenAddress, amount,
+  })
+}
+
+export interface SwapTxResponse {
+  to: string
+  data: string
+  value: string
+  gasLimit: string
+  chainId: number
+}
+
+export async function getSwapTransaction(
+  rawQuote: unknown
+): Promise<SwapTxResponse> {
+  return post<SwapTxResponse>("/marketplace/swap", {
+    quoteResponse: rawQuote,
+  })
+}
+
+export async function confirmPayment(
+  infohash: string,
+  buyerAddress: string,
+  txHash: string,
+  message: string,
+  signature: string
+): Promise<{ success: boolean; accessGranted: boolean }> {
+  return post<{ success: boolean; accessGranted: boolean }>("/marketplace/confirm-payment", {
+    infohash, buyerAddress, txHash, message, signature,
+  })
+}
+
+export async function checkContentAccess(
+  infohash: string,
+  address: string
+): Promise<{ hasAccess: boolean }> {
+  const res = await fetch(`${BASE_URL}/marketplace/access/${infohash}/${address}`)
+  const data = await res.json()
+  if (!res.ok) throw new Error((data as ApiError).error ?? `HTTP ${res.status}`)
+  return data as { hasAccess: boolean }
 }

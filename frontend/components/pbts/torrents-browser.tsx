@@ -19,6 +19,7 @@ import {
   HardDrive,
   Loader2,
   RefreshCw,
+  Tag,
 } from "lucide-react"
 import type { TorrentInfo } from "@/lib/api"
 import type { DemoTorrent } from "@/lib/pbts-store"
@@ -27,11 +28,7 @@ import { formatBytes } from "@/lib/pbts-types"
 type SortKey = "name" | "size" | "peerCount"
 type SortDir = "asc" | "desc"
 
-type DisplayTorrent = TorrentInfo & {
-  name?: string
-  size?: number
-  category?: "video" | "audio" | "software" | "documents" | "other"
-}
+type DisplayTorrent = TorrentInfo & Partial<DemoTorrent>
 
 const CATEGORY_ICONS: Record<string, typeof Film> = {
   video: Film,
@@ -39,6 +36,14 @@ const CATEGORY_ICONS: Record<string, typeof Film> = {
   software: Package,
   documents: FileText,
   other: FileIcon,
+}
+
+const TOKEN_DECIMALS: Record<string, number> = { ETH: 18, WETH: 18, USDC: 6, UNI: 18 }
+
+function formatTokenAmount(amount: string, symbol: string) {
+  const decimals = TOKEN_DECIMALS[symbol] ?? 18
+  const human = Number(amount) / 10 ** decimals
+  return human % 1 === 0 ? human.toString() : human.toFixed(decimals === 6 ? 2 : 4).replace(/0+$/, "").replace(/\.$/, "")
 }
 
 function isDemoTorrent(t: TorrentInfo): t is DemoTorrent {
@@ -78,6 +83,7 @@ export function TorrentsBrowser({
       result = result.filter(
         (t) =>
           t.infohash.toLowerCase().includes(q) ||
+          (t.description && t.description.toLowerCase().includes(q)) ||
           (isDemoTorrent(t) && t.name.toLowerCase().includes(q))
       )
     }
@@ -85,11 +91,12 @@ export function TorrentsBrowser({
     result = [...result].sort((a, b) => {
       let cmp = 0
       switch (sortKey) {
-        case "name":
-          cmp = ((a as DisplayTorrent).name ?? a.infohash).localeCompare(
-            (b as DisplayTorrent).name ?? b.infohash
-          )
+        case "name": {
+          const nameA = a.description || (a as DisplayTorrent).name || a.infohash
+          const nameB = b.description || (b as DisplayTorrent).name || b.infohash
+          cmp = nameA.localeCompare(nameB)
           break
+        }
         case "size":
           cmp = ((a as DisplayTorrent).size ?? 0) - ((b as DisplayTorrent).size ?? 0)
           break
@@ -237,7 +244,7 @@ export function TorrentsBrowser({
               const isThisAnnouncing =
                 isAnnouncing && announcingHash === torrent.infohash
               const hasMetadata = isDemoTorrent(torrent)
-              const Icon = hasMetadata
+              const Icon = hasMetadata && torrent.category
                 ? CATEGORY_ICONS[torrent.category] ?? FileIcon
                 : FileIcon
 
@@ -246,25 +253,23 @@ export function TorrentsBrowser({
                   key={torrent.infohash}
                   className="grid grid-cols-[1fr_100px_90px_100px] lg:grid-cols-[1fr_120px_100px_130px] items-center px-4 py-3 hover:bg-secondary/30 transition-colors"
                 >
-                  {/* Name + infohash */}
+                  {/* Name + infohash + marketplace badges */}
                   <div className="flex items-center gap-3 min-w-0">
                     <div className="h-8 w-8 rounded-md bg-secondary border border-border flex items-center justify-center shrink-0">
                       <Icon className="h-4 w-4 text-muted-foreground" />
                     </div>
                     <div className="flex flex-col min-w-0">
                       <span className="text-sm font-medium text-foreground truncate">
-                        {hasMetadata ? torrent.name : `Torrent ${torrent.infohash.slice(0, 8)}...`}
+                        {torrent.description || (hasMetadata ? torrent.name : `Torrent ${torrent.infohash.slice(0, 8)}...`)}
                       </span>
                       <div className="flex items-center gap-2">
                         <span className="text-[10px] font-mono text-muted-foreground truncate max-w-[120px]">
                           {torrent.infohash.slice(0, 12)}...
                         </span>
-                        {torrent.peerCount > 100 && (
-                          <Badge
-                            variant="outline"
-                            className="text-[10px] border-success/30 text-success bg-success/5 px-1.5 py-0"
-                          >
-                            Popular
+                        {torrent.listed && torrent.tokenSymbol && torrent.tokenAmount && (
+                          <Badge variant="outline" className="text-[10px] gap-1 font-normal border-chart-4/50 text-chart-4 px-1.5 py-0">
+                            <Tag className="h-2.5 w-2.5" />
+                            {formatTokenAmount(torrent.tokenAmount, torrent.tokenSymbol)} {torrent.tokenSymbol}
                           </Badge>
                         )}
                       </div>
@@ -273,7 +278,7 @@ export function TorrentsBrowser({
 
                   {/* Size */}
                   <span className="text-xs font-mono text-muted-foreground">
-                    {hasMetadata ? formatBytes(torrent.size) : "—"}
+                    {hasMetadata && torrent.size ? formatBytes(torrent.size) : "—"}
                   </span>
 
                   {/* Peers */}

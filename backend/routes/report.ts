@@ -8,6 +8,7 @@ import {
   getUserReputation,
   formatRatio,
 } from "../utils/contract";
+import { trackAddress } from "../tracker/userRegistry";
 
 /**
  * Receipt as submitted by the frontend.
@@ -150,6 +151,8 @@ export async function reportHandler(req: Request, res: Response): Promise<void> 
     // Record receipt only after successful on-chain update to avoid
     // blocking future valid retries caused by ephemeral errors.
     seenReceipts.set(receiptKey, timestamp);
+    trackAddress(sender);
+    trackAddress(receiver);
 
     // Read updated reputation for the response.
     const [senderRep, receiverRep] = await Promise.all([

@@ -8,6 +8,7 @@ import { ActionButtons } from "./action-buttons"
 import { SimulateTransferModal } from "./simulate-transfer-modal"
 import { AnnounceCard } from "./announce-card"
 import { ActivityFeed } from "./activity-feed"
+import { NetworkReputation } from "./network-reputation"
 import { FilesBrowser } from "./files-browser"
 import { AgentDemo } from "./agent/agent-demo"
 import type { UserReputation, ActivityItem, AnnounceResult, ContractInfo, TorrentFile } from "@/lib/pbts-types"
@@ -311,6 +312,9 @@ export function Dashboard({ address, onDisconnect, onBack }: DashboardProps) {
 
             {/* Announce result */}
             {announceResult && <AnnounceCard result={announceResult} />}
+
+            {/* Network reputation viewer */}
+            <NetworkReputation currentAddress={address} />
 
             {/* Activity feed */}
             <ActivityFeed activities={activities} />
