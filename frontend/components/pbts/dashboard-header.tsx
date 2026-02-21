@@ -8,6 +8,7 @@ import {
   Check,
   Sun,
   Moon,
+  ArrowLeft,
 } from "lucide-react"
 import { shortenAddress } from "@/lib/pbts-types"
 import { useState } from "react"
@@ -21,6 +22,7 @@ interface DashboardHeaderProps {
   activeTab: DashboardTab
   onTabChange: (tab: DashboardTab) => void
   onDisconnect: () => void
+  onBack?: () => void
   backendOnline: boolean | null
 }
 
@@ -30,6 +32,7 @@ export function DashboardHeader({
   activeTab,
   onTabChange,
   onDisconnect,
+  onBack,
   backendOnline,
 }: DashboardHeaderProps) {
   const [copied, setCopied] = useState(false)
@@ -49,12 +52,23 @@ export function DashboardHeader({
     <header className="border-b border-border bg-card/50 backdrop-blur-sm sticky top-0 z-40">
       <div className="max-w-7xl mx-auto px-4 py-3 flex items-center justify-between">
         <div className="flex items-center gap-3">
+          {onBack && (
+            <Button variant="ghost" size="sm" onClick={onBack} className="text-muted-foreground hover:text-foreground">
+              <ArrowLeft className="h-4 w-4 mr-1" />
+              Back
+            </Button>
+          )}
           <div className="h-8 w-8 rounded-md bg-primary/10 border border-primary/20 flex items-center justify-center">
             <Shield className="h-4 w-4 text-primary" />
           </div>
           <span className="text-lg font-bold text-foreground tracking-tight">
             PBTS
           </span>
+          {onBack && (
+            <Badge variant="outline" className="text-xs border-primary/30 text-primary bg-primary/5">
+              User
+            </Badge>
+          )}
 
           {/* Navigation tabs */}
           <nav className="hidden sm:flex items-center gap-1 ml-6" aria-label="Main navigation">

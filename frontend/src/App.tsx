@@ -1,18 +1,24 @@
 import { useState } from 'react'
-import { WalletConnect } from '@/components/pbts/wallet-connect'
-import { Dashboard } from '@/components/pbts/dashboard'
+import { UserDashboard } from '@/components/pbts/user-dashboard'
+import { TrackerDashboard } from '@/components/pbts/tracker-dashboard'
+import { LandingPage } from '@/components/pbts/landing-page'
+
+export type AppView = 'landing' | 'user' | 'tracker'
 
 export default function App() {
-  const [connectedAddress, setConnectedAddress] = useState<string | null>(null)
+  const [view, setView] = useState<AppView>('landing')
 
-  if (!connectedAddress) {
-    return <WalletConnect onConnect={setConnectedAddress} />
+  const handleBackToLanding = () => {
+    setView('landing')
   }
 
-  return (
-    <Dashboard
-      address={connectedAddress}
-      onDisconnect={() => setConnectedAddress(null)}
-    />
-  )
+  if (view === 'user') {
+    return <UserDashboard onBack={handleBackToLanding} />
+  }
+
+  if (view === 'tracker') {
+    return <TrackerDashboard onBack={handleBackToLanding} />
+  }
+
+  return <LandingPage onSelectRole={setView} />
 }

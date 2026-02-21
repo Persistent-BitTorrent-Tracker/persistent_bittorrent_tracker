@@ -11,6 +11,7 @@ import {
   ChevronRight,
   Sun,
   Moon,
+  ArrowLeft,
 } from "lucide-react"
 import { useWallet } from "@/hooks/useWallet"
 import { registerUser } from "@/lib/api"
@@ -23,9 +24,10 @@ const IS_FUJI = CHAIN_ID === 43113
 
 interface WalletConnectProps {
   onConnect: (address: string) => void
+  onBack?: () => void
 }
 
-export function WalletConnect({ onConnect }: WalletConnectProps) {
+export function WalletConnect({ onConnect, onBack }: WalletConnectProps) {
   const wallet = useWallet()
   const [step, setStep] = useState<"idle" | "connecting" | "switching" | "registering">("idle")
   const { theme, setTheme } = useTheme()
@@ -138,14 +140,27 @@ export function WalletConnect({ onConnect }: WalletConnectProps) {
       {/* Background grid effect */}
       <div className="fixed inset-0 bg-[linear-gradient(var(--border)_1px,transparent_1px),linear-gradient(to_right,var(--border)_1px,transparent_1px)] bg-[size:64px_64px] opacity-30" />
 
-      {/* Theme toggle — top right */}
-      <button
-        onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
-        className="fixed top-4 right-4 z-50 p-2 rounded-md border border-border bg-card text-muted-foreground hover:text-foreground transition-colors"
-        aria-label="Toggle theme"
-      >
-        {theme === "dark" ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
-      </button>
+      {/* Top bar — back + theme toggle */}
+      <div className="fixed top-4 left-4 right-4 z-50 flex justify-between">
+        {onBack ? (
+          <button
+            onClick={onBack}
+            className="flex items-center gap-1.5 px-3 py-2 rounded-md border border-border bg-card text-muted-foreground hover:text-foreground transition-colors text-sm"
+          >
+            <ArrowLeft className="h-4 w-4" />
+            Back
+          </button>
+        ) : (
+          <div />
+        )}
+        <button
+          onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
+          className="p-2 rounded-md border border-border bg-card text-muted-foreground hover:text-foreground transition-colors"
+          aria-label="Toggle theme"
+        >
+          {theme === "dark" ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
+        </button>
+      </div>
 
       <div className="relative z-10 flex flex-col items-center gap-12 max-w-2xl w-full">
         {/* Logo / Brand */}

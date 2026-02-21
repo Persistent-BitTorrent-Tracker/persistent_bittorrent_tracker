@@ -11,6 +11,7 @@ import {
   ArrowLeft,
   ArrowUp,
   ArrowDown,
+  ArrowRight,
   TrendingUp,
   Radio,
   Upload,
@@ -26,6 +27,11 @@ import {
   RefreshCw,
   Users,
   Download,
+  Film,
+  Music,
+  Package,
+  FileText,
+  FileIcon,
 } from "lucide-react"
 import { useTheme } from "next-themes"
 import { useWallet } from "@/hooks/useWallet"
@@ -44,6 +50,11 @@ import {
   getRatioBgColor,
   getRatioLabel,
 } from "@/lib/pbts-types"
+import { getDemoTorrents, type DemoTorrent } from "@/lib/pbts-store"
+import { TorrentsBrowser } from "./torrents-browser"
+import { AgentDemo } from "./agent/agent-demo"
+
+type UserTab = "dashboard" | "torrents" | "agent"
 
 interface UserDashboardProps {
   onBack: () => void
@@ -52,6 +63,7 @@ interface UserDashboardProps {
 export function UserDashboard({ onBack }: UserDashboardProps) {
   const wallet = useWallet()
   const { theme, setTheme } = useTheme()
+  const [activeTab, setActiveTab] = useState<UserTab>("dashboard")
   const [backendOnline, setBackendOnline] = useState<boolean | null>(null)
   const [copied, setCopied] = useState(false)
 
@@ -107,7 +119,7 @@ export function UserDashboard({ onBack }: UserDashboardProps) {
   async function loadTorrents() {
     setIsLoadingTorrents(true)
     const data = await getTorrents()
-    setTorrents(data)
+    setTorrents(data.length > 0 ? data : getDemoTorrents())
     setIsLoadingTorrents(false)
   }
 
@@ -260,6 +272,43 @@ export function UserDashboard({ onBack }: UserDashboardProps) {
             <Badge variant="outline" className="text-xs border-primary/30 text-primary bg-primary/5">
               User
             </Badge>
+
+            {/* Navigation tabs */}
+            <nav className="hidden sm:flex items-center gap-1 ml-6" aria-label="Main navigation">
+              <button
+                onClick={() => setActiveTab("dashboard")}
+                className={`px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${
+                  activeTab === "dashboard"
+                    ? "bg-primary/10 text-primary"
+                    : "text-muted-foreground hover:text-foreground hover:bg-secondary"
+                }`}
+                aria-current={activeTab === "dashboard" ? "page" : undefined}
+              >
+                Dashboard
+              </button>
+              <button
+                onClick={() => setActiveTab("torrents")}
+                className={`px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${
+                  activeTab === "torrents"
+                    ? "bg-primary/10 text-primary"
+                    : "text-muted-foreground hover:text-foreground hover:bg-secondary"
+                }`}
+                aria-current={activeTab === "torrents" ? "page" : undefined}
+              >
+                Torrents
+              </button>
+              <button
+                onClick={() => setActiveTab("agent")}
+                className={`px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${
+                  activeTab === "agent"
+                    ? "bg-primary/10 text-primary"
+                    : "text-muted-foreground hover:text-foreground hover:bg-secondary"
+                }`}
+                aria-current={activeTab === "agent" ? "page" : undefined}
+              >
+                Agent
+              </button>
+            </nav>
           </div>
 
           <div className="flex items-center gap-3">
@@ -314,7 +363,43 @@ export function UserDashboard({ onBack }: UserDashboardProps) {
         </div>
       </header>
 
+      {/* Mobile tab switcher */}
+      <div className="sm:hidden flex border-b border-border bg-card/50">
+        <button
+          onClick={() => setActiveTab("dashboard")}
+          className={`flex-1 py-2.5 text-sm font-medium text-center transition-colors ${
+            activeTab === "dashboard"
+              ? "text-primary border-b-2 border-primary"
+              : "text-muted-foreground"
+          }`}
+        >
+          Dashboard
+        </button>
+        <button
+          onClick={() => setActiveTab("torrents")}
+          className={`flex-1 py-2.5 text-sm font-medium text-center transition-colors ${
+            activeTab === "torrents"
+              ? "text-primary border-b-2 border-primary"
+              : "text-muted-foreground"
+          }`}
+        >
+          Torrents
+        </button>
+        <button
+          onClick={() => setActiveTab("agent")}
+          className={`flex-1 py-2.5 text-sm font-medium text-center transition-colors ${
+            activeTab === "agent"
+              ? "text-primary border-b-2 border-primary"
+              : "text-muted-foreground"
+          }`}
+        >
+          Agent
+        </button>
+      </div>
+
       <main className="flex-1 max-w-5xl mx-auto w-full px-4 py-6 flex flex-col gap-6">
+        {activeTab === "dashboard" ? (
+        <>
         {/* Connect wallet prompt */}
         {!wallet.address && (
           <Card className="border-primary/20 bg-primary/5">
@@ -479,7 +564,7 @@ export function UserDashboard({ onBack }: UserDashboardProps) {
           </div>
         )}
 
-        {/* Available Torrents */}
+        {/* Available Torrents (preview — first 3) */}
         <Card className="border-border bg-card">
           <CardHeader className="pb-3">
             <div className="flex items-center justify-between">
@@ -504,14 +589,14 @@ export function UserDashboard({ onBack }: UserDashboardProps) {
               </Button>
             </div>
           </CardHeader>
-          <CardContent>
+          <CardContent className="p-0">
             {isLoadingTorrents && torrents.length === 0 ? (
-              <div className="flex flex-col items-center justify-center py-8 text-muted-foreground">
+              <div className="flex flex-col items-center justify-center py-8 text-muted-foreground px-6">
                 <Loader2 className="h-6 w-6 animate-spin mb-3" />
                 <p className="text-sm">Loading torrents...</p>
               </div>
             ) : torrents.length === 0 ? (
-              <div className="flex flex-col items-center justify-center py-8 text-muted-foreground">
+              <div className="flex flex-col items-center justify-center py-8 text-muted-foreground px-6">
                 <Download className="h-8 w-8 mb-3 opacity-40" />
                 <p className="text-sm">No torrents in the swarm yet</p>
                 <p className="text-xs mt-1">
@@ -519,47 +604,98 @@ export function UserDashboard({ onBack }: UserDashboardProps) {
                 </p>
               </div>
             ) : (
-              <ScrollArea className="max-h-[400px]">
-                <div className="space-y-2">
-                  {torrents.map((torrent) => {
+              <>
+                {/* Table header */}
+                <div className="bg-secondary/50 border-b border-t border-border">
+                  <div className="grid grid-cols-[1fr_100px_90px_100px] lg:grid-cols-[1fr_120px_100px_130px] items-center px-4 py-2">
+                    <span className="text-xs font-semibold text-muted-foreground">Name</span>
+                    <span className="text-xs font-semibold text-muted-foreground">Size</span>
+                    <span className="text-xs font-semibold text-muted-foreground">Peers</span>
+                    <span className="text-xs font-semibold text-muted-foreground text-right">Actions</span>
+                  </div>
+                </div>
+
+                {/* Show first 3 torrents */}
+                <div className="divide-y divide-border">
+                  {torrents.slice(0, 3).map((torrent) => {
                     const isThisAnnouncing = isAnnouncing && announcingHash === torrent.infohash
+                    const hasMetadata = "name" in torrent
+                    const t = torrent as TorrentInfo & Partial<DemoTorrent>
+                    const categoryIcons: Record<string, typeof Film> = {
+                      video: Film, audio: Music, software: Package, documents: FileText, other: FileIcon,
+                    }
+                    const Icon = hasMetadata && t.category ? categoryIcons[t.category] ?? FileIcon : FileIcon
 
                     return (
                       <div
                         key={torrent.infohash}
-                        className="rounded-lg border border-border p-4 flex items-center justify-between gap-4 hover:bg-secondary/30 transition-colors"
+                        className="grid grid-cols-[1fr_100px_90px_100px] lg:grid-cols-[1fr_120px_100px_130px] items-center px-4 py-3 hover:bg-secondary/30 transition-colors"
                       >
-                        <div className="flex flex-col gap-1 min-w-0">
-                          <span className="text-sm font-mono text-foreground truncate">
-                            {torrent.infohash}
-                          </span>
-                          <div className="flex items-center gap-3 text-xs text-muted-foreground">
-                            <span className="flex items-center gap-1">
-                              <Users className="h-3 w-3" />
-                              {torrent.peerCount} peer{torrent.peerCount !== 1 ? "s" : ""}
+                        {/* Name + infohash */}
+                        <div className="flex items-center gap-3 min-w-0">
+                          <div className="h-8 w-8 rounded-md bg-secondary border border-border flex items-center justify-center shrink-0">
+                            <Icon className="h-4 w-4 text-muted-foreground" />
+                          </div>
+                          <div className="flex flex-col min-w-0">
+                            <span className="text-sm font-medium text-foreground truncate">
+                              {hasMetadata && t.name ? t.name : `Torrent ${torrent.infohash.slice(0, 8)}...`}
+                            </span>
+                            <span className="text-[10px] font-mono text-muted-foreground truncate max-w-[120px]">
+                              {torrent.infohash.slice(0, 12)}...
                             </span>
                           </div>
                         </div>
 
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => handleAnnounce(torrent.infohash)}
-                          disabled={isAnnouncing || !wallet.address || !isRegistered}
-                          className="shrink-0 gap-1.5"
-                        >
-                          {isThisAnnouncing ? (
-                            <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                          ) : (
-                            <Download className="h-3.5 w-3.5" />
-                          )}
-                          Announce
-                        </Button>
+                        {/* Size */}
+                        <span className="text-xs font-mono text-muted-foreground">
+                          {hasMetadata && t.size ? formatBytes(t.size) : "—"}
+                        </span>
+
+                        {/* Peers */}
+                        <div className="flex items-center gap-1.5">
+                          <Users className="h-3 w-3 text-muted-foreground" />
+                          <span className="text-xs text-success font-medium">
+                            {torrent.peerCount}
+                          </span>
+                        </div>
+
+                        {/* Actions */}
+                        <div className="flex items-center gap-2 justify-end">
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => handleAnnounce(torrent.infohash)}
+                            disabled={isAnnouncing || !wallet.address || !isRegistered}
+                            className="h-7 px-2.5 text-xs text-muted-foreground hover:text-foreground hover:bg-secondary gap-1.5"
+                          >
+                            {isThisAnnouncing ? (
+                              <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                            ) : (
+                              <Download className="h-3.5 w-3.5" />
+                            )}
+                            <span className="hidden lg:inline">Announce</span>
+                          </Button>
+                        </div>
                       </div>
                     )
                   })}
                 </div>
-              </ScrollArea>
+
+                {/* View all button */}
+                {torrents.length > 3 && (
+                  <div className="border-t border-border px-4 py-3 flex items-center justify-center">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => setActiveTab("torrents")}
+                      className="text-xs text-muted-foreground hover:text-foreground gap-1.5"
+                    >
+                      View all {torrents.length} torrents
+                      <ArrowRight className="h-3.5 w-3.5" />
+                    </Button>
+                  </div>
+                )}
+              </>
             )}
           </CardContent>
         </Card>
@@ -627,6 +763,21 @@ export function UserDashboard({ onBack }: UserDashboardProps) {
               )}
             </CardContent>
           </Card>
+        )}
+        </>
+        ) : activeTab === "torrents" ? (
+          <TorrentsBrowser
+            torrents={torrents}
+            isLoading={isLoadingTorrents}
+            onRefresh={loadTorrents}
+            onAnnounce={handleAnnounce}
+            isAnnouncing={isAnnouncing}
+            announcingHash={announcingHash}
+            walletConnected={!!wallet.address}
+            isRegistered={isRegistered}
+          />
+        ) : (
+          <AgentDemo />
         )}
       </main>
     </div>
