@@ -9,6 +9,7 @@
     "start": "tsx server.ts",
     "test": "node node_modules/.bin/jest --testPathPattern=tests/",
     "test:all": "node node_modules/.bin/jest --testPathPattern=tests/ && cd ../contracts && forge test",
+    "update-abis": "tsx scripts/update-abis.ts",
     "deploy": "tsx scripts/deploy.ts",
     "migrate": "tsx scripts/migrate.ts",
     "status": "tsx scripts/status.ts",

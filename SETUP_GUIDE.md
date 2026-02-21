@@ -217,6 +217,63 @@ cd ../backend && npm run test:all
 
 ---
 
+## Contract Development Workflow
+
+When modifying smart contracts, follow this workflow to keep everything in sync:
+
+### Updating Contract ABIs
+
+After making changes to Solidity contracts:
+
+```bash
+# 1. Recompile contracts
+cd contracts && forge build
+
+# 2. Update ABIs automatically
+cd ../backend && npm run update-abis
+
+# 3. Test that backend still works
+npm run dev
+```
+
+The `update-abis` command extracts the latest ABIs from compiled artifacts and updates the JSON files in `backend/abis/`.
+
+### Full Contract Redeployment
+
+For breaking changes that require redeployment:
+
+```bash
+# 1. Update and test contracts
+cd contracts && forge build && forge test -vv
+
+# 2. Deploy new contracts
+cd ../backend && npm run deploy
+
+# 3. Update environment variables with new addresses
+# Edit backend/.env and frontend/.env.local with new contract addresses
+
+# 4. Update ABIs (in case of interface changes)
+npm run update-abis
+
+# 5. Restart backend and frontend
+npm run dev  # backend
+cd ../frontend && npm run dev  # frontend (new terminal)
+```
+
+### Contract Migration (Preserves Reputation)
+
+For non-breaking upgrades that preserve existing reputation:
+
+```bash
+# Deploy new tracker pointing to old one as referrer
+cd backend && npm run migrate
+
+# Update environment variables with new tracker address
+# The old contract remains as referrer, preserving all reputation data
+```
+
+---
+
 ## API Quick Reference
 
 All endpoints run at `http://localhost:3001`.

@@ -1,24 +1,13 @@
 import { ethers } from "ethers";
 import config from "../config/index";
+import reputationTrackerAbi from "../abis/reputationTracker.json";
+import repFactoryAbi from "../abis/repFactory.json";
 
 // Minimal ABI — only the functions the server needs to call.
-const REPUTATION_TRACKER_ABI = [
-  // Write
-  "function register(address userKey) external returns (bool)",
-  "function updateReputation(address user, uint256 uploadDelta, uint256 downloadDelta) external",
-
-  // Read
-  "function getReputation(address user) external view returns (tuple(uint256 uploadBytes, uint256 downloadBytes, uint256 lastUpdated))",
-  "function getRatio(address user) external view returns (uint256)",
-  "function tracker() external view returns (address)",
-  "function REFERRER() external view returns (address)",
-];
+const REPUTATION_TRACKER_ABI = reputationTrackerAbi;
 
 // Minimal ABI for the RepFactory contract.
-const REP_FACTORY_ABI = [
-  "function deployNewTracker(address _referrer) external returns (address)",
-  "event NewReputationTracker(address indexed newContract, address indexed referrer, address indexed caller)",
-];
+const REP_FACTORY_ABI = repFactoryAbi;
 
 let _provider: ethers.JsonRpcProvider | null = null;
 let _signer: ethers.NonceManager | null = null;
