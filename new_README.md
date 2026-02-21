@@ -293,44 +293,116 @@ An agent's on-chain ratio becomes a portable credential. High-ratio agents are r
 
 ---
 
+## Frontend Architecture
+
+The frontend is a React + Vite + TailwindCSS application with **role-based separation** between Users and Trackers.
+
+### Landing Page
+
+The entry point (`/`) is a public landing page — **no wallet connection required**. Users choose their role:
+
+- **User** — interact with the tracker as a peer (download/seed)
+- **Tracker** — admin view for managing the tracker
+
+### User Dashboard
+
+Accessible after selecting "User" from the landing page. Features:
+
+| Feature | Description |
+|---|---|
+| **Reputation Stats** | Shows ratio, upload bytes, and download bytes (pulled from on-chain data via `GET /reputation/:address`) |
+| **Register Account** | Registers the wallet on-chain via `POST /register`. Creates a reputation record with 1 GB initial credit. |
+| **Register Content (Seed)** | Enter an infohash to join the swarm as a seeder. Announces `started` event via `POST /announce`. |
+| **Available Torrents** | Lists all active torrents in the swarm (from `GET /torrents`) with peer counts. Each torrent has a one-click **Announce** button. |
+| **Announce Result** | Shows Access Granted/Denied with peer list after announcing a torrent. |
+
+**Key difference from old design**: Wallet connection is **not** required to view the landing page. Registration is an explicit user action, not automatic on wallet connect.
+
+### Tracker Dashboard
+
+Accessible after selecting "Tracker" from the landing page. Features:
+
+| Feature | Description |
+|---|---|
+| **Registered Users** | Lists all known registered addresses with their upload, download, ratio, and registration status (from `GET /users`). |
+| **Deploy New Contract** | Triggers the ReputationFactory to deploy a new ReputationTracker contract via `POST /migrate`. The new contract inherits reputation data from the current one via the referrer mechanism. |
+| **Refresh** | Reload user list and backend health status. |
+
+### API Endpoints Used by Frontend
+
+| Endpoint | Method | Used By | Description |
+|---|---|---|---|
+| `/health` | GET | Both | Backend health check |
+| `/register` | POST | User | Register wallet on-chain |
+| `/announce` | POST | User | Announce torrent (join swarm) |
+| `/torrents` | GET | User | List active torrents in swarm |
+| `/reputation/:address` | GET | User | Query on-chain reputation |
+| `/users` | GET | Tracker | List all registered users |
+| `/migrate` | POST | Tracker | Deploy new contract via factory |
+
+---
+
 ## Running the Project
 
 ### Prerequisites
 - Node.js 18+
 - Foundry (`forge`, `cast`, `anvil`)
-- MetaMask or programmatic wallet with Sepolia ETH
+- MetaMask browser extension
 
-### Quick Start
+### Local Development (Anvil)
+
+```bash
+# Terminal 1: Start local blockchain
+cd contracts && anvil
+
+# Terminal 2: Deploy contracts to Anvil
+cd contracts && forge script script/DeployDirect.s.sol \
+  --rpc-url http://127.0.0.1:8545 \
+  --broadcast \
+  --private-key 0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80
+
+# Terminal 3: Start backend
+cd backend
+cp .env.example .env  # Then fill in values (see below)
+npm install && npm run dev
+
+# Terminal 4: Start frontend
+cd frontend
+npm install && npm run dev
+
+# Open http://localhost:5173
+```
+
+#### Backend `.env` for Anvil
+
+```env
+RPC_URL=http://127.0.0.1:8545
+CHAIN_ID=31337
+DEPLOYER_PRIVATE_KEY=0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80
+REPUTATION_TRACKER_ADDRESS=0x5FbDB2315678afecb367f032d93F642f64180aa3
+FACTORY_ADDRESS=0x0000000000000000000000000000000000000000
+PORT=3001
+NODE_ENV=development
+ADMIN_SECRET=test-secret
+```
+
+#### MetaMask Setup for Anvil
+
+1. Import Anvil account #0: private key `0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80`
+2. Add custom network: RPC URL `http://127.0.0.1:8545`, Chain ID `31337`
+
+### Sepolia Deployment
 
 ```bash
 # 1. Deploy contracts
 cd contracts
-cp .env.example .env  # Add your PRIVATE_KEY and RPC_URL
 forge script script/DeployPBTS.s.sol --rpc-url $RPC_URL --broadcast
 
-# 2. Start backend
-cd ../backend
-cp .env.example .env  # Add contract addresses and deployer key
-npm install && npm run start
+# 2. Start backend (update .env with deployed contract addresses)
+cd backend && npm run dev
 
 # 3. Start frontend
-cd ../frontend
-npm install && npm run dev
-
-# 4. Open http://localhost:5173 and connect MetaMask
-```
-
-### Running the Agent Demo
-
-```bash
-# Terminal 1: Start the PBTS tracker backend
-cd backend && npm run start
-
-# Terminal 2: Agent Alpha seeds a dataset
-cd backend && npx ts-node client/cli.ts seed --file ./sample_data/cooking_video.mp4
-
-# Terminal 3: Agent Beta downloads and auto-receipts
-cd backend && npx ts-node client/cli.ts download --infohash <hash>
+cd frontend && npm run dev
 ```
 
 ---
