@@ -1,5 +1,5 @@
 /**
- * Backend API client for PBTS.
+ * Backend API client for Neural Torrent.
  *
  * Reads the backend URL from VITE_BACKEND_URL (defaults to localhost:3001).
  */

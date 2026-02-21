@@ -276,7 +276,7 @@ export function NetworkReputation({ currentAddress }: NetworkReputationProps) {
                     </div>
                   ) : agent.data ? (
                     <p className="text-xs text-muted-foreground">
-                      This address has not registered on the PBTS network.
+                      This address has not registered on the Neural Torrent network.
                     </p>
                   ) : null}
                 </div>

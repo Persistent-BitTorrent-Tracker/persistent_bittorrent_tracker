@@ -24,6 +24,7 @@ import {
   Moon,
   Copy,
   Check,
+  LogOut,
   RefreshCw,
   Users,
   Download,
@@ -51,11 +52,12 @@ import {
   getRatioBgColor,
   getRatioLabel,
 } from "@/lib/pbts-types"
-import { getDemoTorrents, type DemoTorrent } from "@/lib/pbts-store"
+import { getDemoTorrents, calculateRatio, type DemoTorrent } from "@/lib/pbts-store"
 import { TorrentsBrowser } from "./torrents-browser"
 import { AgentDemo } from "./agent/agent-demo"
+import { MarketplaceDashboard } from "./marketplace-dashboard"
 
-type UserTab = "dashboard" | "torrents" | "agent"
+type UserTab = "dashboard" | "torrents" | "marketplace" | "agent"
 
 interface UserDashboardProps {
   onBack: () => void
@@ -113,7 +115,11 @@ export function UserDashboard({ onBack }: UserDashboardProps) {
       setRatio(rep.ratio ?? Infinity)
       setIsRegistered(rep.isRegistered)
     } catch {
-      // Backend may be offline
+      // Backend may be offline — show as unregistered
+      setUploadBytes(0)
+      setDownloadBytes(0)
+      setRatio(0)
+      setIsRegistered(false)
     }
   }
 
@@ -128,6 +134,12 @@ export function UserDashboard({ onBack }: UserDashboardProps) {
     await wallet.connect()
   }, [wallet])
 
+  const handleDisconnect = useCallback(() => {
+    wallet.disconnect()
+    toast.success("Wallet disconnected")
+    onBack()
+  }, [wallet, onBack])
+
   const handleCopy = useCallback(async () => {
     if (!wallet.address) return
     await navigator.clipboard.writeText(wallet.address)
@@ -136,6 +148,7 @@ export function UserDashboard({ onBack }: UserDashboardProps) {
   }, [wallet.address])
 
   // Announce: query the tracker for a specific torrent
+  // Falls back to local simulation when backend is offline
   const handleAnnounce = useCallback(async (infohash: string) => {
     if (!wallet.address) {
       toast.error("Connect your wallet first")
@@ -150,7 +163,7 @@ export function UserDashboard({ onBack }: UserDashboardProps) {
     setAnnouncingHash(infohash)
     setAnnounceResult(null)
 
-    const message = `PBTS announce ${infohash} started by ${wallet.address} at ${Date.now()}`
+    const message = `Neural Torrent announce ${infohash} started by ${wallet.address} at ${Date.now()}`
 
     try {
       const signature = await wallet.signMessage(message)
@@ -185,14 +198,52 @@ export function UserDashboard({ onBack }: UserDashboardProps) {
 
       // Refresh torrent list after announce (swarm may have changed)
       await loadTorrents()
-    } catch (err: unknown) {
-      const errMsg = err instanceof Error ? err.message : String(err)
-      toast.error("Announce failed", { description: errMsg })
+    } catch {
+      // Backend offline — simulate locally
+      const torrent = torrents.find((t) => t.infohash === infohash)
+      const torrentSize = (torrent && "size" in torrent) ? (torrent as DemoTorrent).size : 256 * 1024 * 1024
+
+      const newDownload = downloadBytes + torrentSize
+      const newRatio = calculateRatio(uploadBytes, newDownload)
+      const minRatio = 0.5
+
+      if (newRatio >= minRatio) {
+        setDownloadBytes(newDownload)
+        setRatio(newRatio)
+        setAnnounceResult({
+          infohash,
+          status: "allowed",
+          peers: [
+            { ip: "192.168.1.101", port: 6881 },
+            { ip: "10.0.0.42", port: 6882 },
+            { ip: "172.16.0.15", port: 6883 },
+          ],
+          ratio: newRatio,
+          message: `Access granted. Downloaded ${formatBytes(torrentSize)} (simulated).`,
+        })
+        toast.success("Access Granted!", {
+          description: `Simulated download of ${formatBytes(torrentSize)}`,
+        })
+      } else {
+        setDownloadBytes(newDownload)
+        setRatio(newRatio)
+        const deficit = (minRatio * newDownload) - uploadBytes
+        setAnnounceResult({
+          infohash,
+          status: "blocked",
+          peers: [],
+          ratio: newRatio,
+          message: `Insufficient ratio (${newRatio.toFixed(2)}). Upload ${formatBytes(deficit)} more to regain access.`,
+        })
+        toast.error("Access Denied", {
+          description: `Ratio dropped to ${newRatio.toFixed(2)} — below 0.50 minimum`,
+        })
+      }
     }
 
     setIsAnnouncing(false)
     setAnnouncingHash(null)
-  }, [wallet, isRegistered])
+  }, [wallet, isRegistered, torrents, uploadBytes, downloadBytes])
 
   // Register: tell the tracker you have content to share (seeder)
   // This registers your account on-chain, then announces the infohash so you join the swarm
@@ -204,7 +255,7 @@ export function UserDashboard({ onBack }: UserDashboardProps) {
 
     setIsRegistering(true)
 
-    const message = `Register PBTS account for ${wallet.address} at ${Date.now()}`
+    const message = `Register Neural Torrent account for ${wallet.address} at ${Date.now()}`
 
     try {
       const signature = await wallet.signMessage(message)
@@ -221,7 +272,15 @@ export function UserDashboard({ onBack }: UserDashboardProps) {
         setIsRegistered(true)
         await loadReputation(wallet.address)
       } else {
-        toast.error("Registration failed", { description: errMsg })
+        // Backend offline — simulate registration locally with 1 GB credit
+        const initialCredit = 1073741824 // 1 GB
+        setUploadBytes(initialCredit)
+        setDownloadBytes(0)
+        setRatio(Infinity)
+        setIsRegistered(true)
+        toast.success("Registered (simulated)!", {
+          description: "1 GB initial credit granted. You can now announce torrents.",
+        })
       }
     }
 
@@ -269,7 +328,7 @@ export function UserDashboard({ onBack }: UserDashboardProps) {
             <div className="h-8 w-8 rounded-md bg-primary/10 border border-primary/20 flex items-center justify-center">
               <Shield className="h-4 w-4 text-primary" />
             </div>
-            <span className="text-lg font-bold text-foreground tracking-tight">PBTS</span>
+            <span className="text-lg font-bold text-foreground tracking-tight">Neural Torrent</span>
             <Badge variant="outline" className="text-xs border-primary/30 text-primary bg-primary/5">
               User
             </Badge>
@@ -297,6 +356,17 @@ export function UserDashboard({ onBack }: UserDashboardProps) {
                 aria-current={activeTab === "torrents" ? "page" : undefined}
               >
                 Torrents
+              </button>
+              <button
+                onClick={() => setActiveTab("marketplace")}
+                className={`px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${
+                  activeTab === "marketplace"
+                    ? "bg-primary/10 text-primary"
+                    : "text-muted-foreground hover:text-foreground hover:bg-secondary"
+                }`}
+                aria-current={activeTab === "marketplace" ? "page" : undefined}
+              >
+                Marketplace
               </button>
               <button
                 onClick={() => setActiveTab("agent")}
@@ -351,6 +421,18 @@ export function UserDashboard({ onBack }: UserDashboardProps) {
               </button>
             )}
 
+            {wallet.address && (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={handleDisconnect}
+                className="text-muted-foreground hover:text-destructive"
+                aria-label="Disconnect wallet"
+              >
+                <LogOut className="h-4 w-4" />
+              </Button>
+            )}
+
             <Button
               variant="ghost"
               size="sm"
@@ -385,6 +467,16 @@ export function UserDashboard({ onBack }: UserDashboardProps) {
           }`}
         >
           Torrents
+        </button>
+        <button
+          onClick={() => setActiveTab("marketplace")}
+          className={`flex-1 py-2.5 text-sm font-medium text-center transition-colors ${
+            activeTab === "marketplace"
+              ? "text-primary border-b-2 border-primary"
+              : "text-muted-foreground"
+          }`}
+        >
+          Market
         </button>
         <button
           onClick={() => setActiveTab("agent")}
@@ -796,6 +888,8 @@ export function UserDashboard({ onBack }: UserDashboardProps) {
             walletConnected={!!wallet.address}
             isRegistered={isRegistered}
           />
+        ) : activeTab === "marketplace" ? (
+          <MarketplaceDashboard onBack={() => setActiveTab("dashboard")} embedded />
         ) : (
           <AgentDemo />
         )}

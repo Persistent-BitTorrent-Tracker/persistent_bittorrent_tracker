@@ -161,7 +161,7 @@ export function getStepNarration(
   const narrations: Record<DemoStep, { text: string; type: NarrationEntry["type"] }[]> = {
     idle: [],
     registration: [
-      { text: "Agent AURA (You) registers wallet 0xA1...aaaa on PBTS network", type: "info" },
+      { text: "Agent AURA (You) registers wallet 0xA1...aaaa on Neural Torrent network", type: "info" },
       { text: "Agent MEDI registers wallet 0xB2...bBBb — 1 GB initial credit granted", type: "info" },
       { text: "Agent SATO registers wallet 0xC3...cCCc — on-chain confirmation received", type: "info" },
       { text: "Agent VOXL registers wallet 0xD4...dDDd — 4 agents now in swarm", type: "info" },
@@ -176,7 +176,7 @@ export function getStepNarration(
     ],
     discovery: [
       { text: "AURA needs medical imaging data to improve autonomous driving safety", type: "highlight" },
-      { text: "AURA queries PBTS tracker for medical imaging datasets...", type: "info" },
+      { text: "AURA queries Neural Torrent tracker for medical imaging datasets...", type: "info" },
       { text: "Scanning network peers for matching data categories...", type: "info" },
       { text: "Match found: MEDI has 120GB medical imaging data available", type: "success" },
       { text: "Peer connection established between AURA and MEDI", type: "success" },
@@ -211,7 +211,7 @@ export function getStepNarration(
       { text: "Pieces flowing: SATO → VOXL (satellite imagery transfer)", type: "info" },
       { text: "VOXL downloads 2GB but does NOT seed any speech data back", type: "warning" },
       { text: "VOXL ratio drops: 0.08 → 0.04 — below minimum threshold (0.50)", type: "warning" },
-      { text: "PBTS tracker detects free-rider behavior...", type: "error" },
+      { text: "Neural Torrent tracker detects free-rider behavior...", type: "error" },
       { text: "Choking mechanism enforced — VOXL connections severed", type: "error" },
       { text: "VOXL is now BLOCKED from the network until it seeds data", type: "error" },
       { text: "Free-rider protection enforced — honest agents are protected", type: "highlight" },

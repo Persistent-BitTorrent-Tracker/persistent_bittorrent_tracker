@@ -41,14 +41,16 @@ export function useWallet(): WalletState {
     const eth = window.ethereum
     if (!eth) return
 
-    eth.request({ method: 'eth_accounts' }).then((accounts) => {
-      const accs = accounts as string[]
-      if (accs.length > 0) {
-        setAddress(accs[0])
-        setProvider(new ethers.BrowserProvider(eth))
-        updateChainId(eth)
-      }
-    })
+    if (!sessionStorage.getItem('wallet-disconnected')) {
+      eth.request({ method: 'eth_accounts' }).then((accounts) => {
+        const accs = accounts as string[]
+        if (accs.length > 0) {
+          setAddress(accs[0])
+          setProvider(new ethers.BrowserProvider(eth))
+          updateChainId(eth)
+        }
+      })
+    }
 
     const handleAccountsChanged = (accounts: unknown) => {
       const accs = accounts as string[]
@@ -78,6 +80,7 @@ export function useWallet(): WalletState {
     }
     setIsConnecting(true)
     try {
+      sessionStorage.removeItem('wallet-disconnected')
       const accounts = (await eth.request({ method: 'eth_requestAccounts' })) as string[]
       setAddress(accounts[0])
       setProvider(new ethers.BrowserProvider(eth))
@@ -93,6 +96,7 @@ export function useWallet(): WalletState {
     setAddress(null)
     setProvider(null)
     setChainId(null)
+    sessionStorage.setItem('wallet-disconnected', '1')
   }, [])
 
   const switchToFuji = useCallback(async () => {

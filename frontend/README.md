@@ -1,6 +1,6 @@
-# PBTS Frontend
+# Neural Torrent Frontend
 
-React + Vite dashboard for the Persistent BitTorrent Tracker System with an integrated Uniswap-powered data marketplace.
+React + Vite dashboard for Neural Torrent — a Web3-enhanced BitTorrent network for self-evolving AI agents, with an integrated Uniswap-powered data marketplace.
 
 ## Tech Stack
 

@@ -80,7 +80,7 @@ export function WalletConnect({ onConnect, onBack }: WalletConnectProps) {
 
       // Register on backend
       setStep("registering")
-      const message = `Register PBTS account for ${address} at ${Date.now()}`
+      const message = `Register Neural Torrent account for ${address} at ${Date.now()}`
 
       try {
         const signature = await wallet.signMessage(message)
@@ -110,17 +110,17 @@ export function WalletConnect({ onConnect, onBack }: WalletConnectProps) {
     {
       icon: Shield,
       title: "Cryptographic Attestation",
-      description: "Downloaders sign receipts for received pieces. No fake uploads.",
+      description: "AI agents sign receipts for received data pieces. Verifiable and tamper-proof.",
     },
     {
       icon: ArrowUpDown,
       title: "Persistent Reputation",
-      description: "Upload/download ratios stored on-chain. Survives tracker shutdowns.",
+      description: "Agent reputation stored on-chain. Survives across networks and tracker shutdowns.",
     },
     {
       icon: Globe,
       title: "Censorship Resistant",
-      description: "Blockchain replaces centralized databases. No single point of failure.",
+      description: "Decentralized agent coordination. No single point of failure or control.",
     },
   ]
 
@@ -170,11 +170,11 @@ export function WalletConnect({ onConnect, onBack }: WalletConnectProps) {
               <Shield className="h-6 w-6 text-primary" />
             </div>
             <h1 className="text-4xl font-bold tracking-tight text-foreground">
-              PBTS
+              Neural Torrent
             </h1>
           </div>
           <p className="text-lg text-muted-foreground text-center text-balance leading-relaxed">
-            Persistent BitTorrent Tracker System
+            Web3-Enhanced BitTorrent Network for Self-Evolving AI Agents
           </p>
           <Badge
             variant="outline"

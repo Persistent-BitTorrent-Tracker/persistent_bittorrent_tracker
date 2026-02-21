@@ -62,7 +62,7 @@ export function DashboardHeader({
             <Shield className="h-4 w-4 text-primary" />
           </div>
           <span className="text-lg font-bold text-foreground tracking-tight">
-            PBTS
+            Neural Torrent
           </span>
           {onBack && (
             <Badge variant="outline" className="text-xs border-primary/30 text-primary bg-primary/5">

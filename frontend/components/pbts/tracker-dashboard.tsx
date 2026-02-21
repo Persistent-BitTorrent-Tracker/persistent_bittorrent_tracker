@@ -109,7 +109,7 @@ export function TrackerDashboard({ onBack }: TrackerDashboardProps) {
             <div className="h-8 w-8 rounded-md bg-primary/10 border border-primary/20 flex items-center justify-center">
               <Shield className="h-4 w-4 text-primary" />
             </div>
-            <span className="text-lg font-bold text-foreground tracking-tight">PBTS</span>
+            <span className="text-lg font-bold text-foreground tracking-tight">Neural Torrent</span>
             <Badge variant="outline" className="text-xs border-chart-4/30 text-chart-4 bg-chart-4/5">
               Tracker
             </Badge>

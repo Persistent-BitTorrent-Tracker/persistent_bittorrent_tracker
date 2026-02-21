@@ -24,22 +24,22 @@ export function LandingPage({ onSelectRole }: LandingPageProps) {
     {
       icon: Shield,
       title: "Cryptographic Attestation",
-      description: "Downloaders sign receipts for received pieces. No fake uploads.",
+      description: "AI agents sign receipts for received data pieces. Verifiable and tamper-proof.",
     },
     {
       icon: ArrowUpDown,
       title: "Persistent Reputation",
-      description: "Upload/download ratios stored on-chain. Survives tracker shutdowns.",
+      description: "Agent reputation stored on-chain. Survives across networks and tracker shutdowns.",
     },
     {
       icon: Globe,
       title: "Censorship Resistant",
-      description: "Blockchain replaces centralized databases. No single point of failure.",
+      description: "Decentralized agent coordination. No single point of failure or control.",
     },
     {
       icon: ShoppingCart,
-      title: "Data Marketplace",
-      description: "Seeders set prices, buyers pay with any token. Powered by Uniswap.",
+      title: "Agent Data Marketplace",
+      description: "Agents trade training data autonomously. Cross-token swaps via Uniswap.",
     },
   ]
 
@@ -62,17 +62,17 @@ export function LandingPage({ onSelectRole }: LandingPageProps) {
               <Shield className="h-6 w-6 text-primary" />
             </div>
             <h1 className="text-4xl font-bold tracking-tight text-foreground">
-              PBTS
+              Neural Torrent
             </h1>
           </div>
           <p className="text-lg text-muted-foreground text-center text-balance leading-relaxed">
-            Persistent BitTorrent Tracker System
+            Web3-Enhanced BitTorrent Network for Self-Evolving AI Agents
           </p>
           <Badge
             variant="outline"
             className="text-xs font-mono border-primary/30 text-primary bg-primary/5"
           >
-            Blockchain-Backed Reputation
+            AI Agent Data Network
           </Badge>
         </div>
 
@@ -97,7 +97,7 @@ export function LandingPage({ onSelectRole }: LandingPageProps) {
           <p className="text-sm text-muted-foreground text-center mb-2">
             Choose your role to continue
           </p>
-          <div className="grid grid-cols-3 gap-4 w-full">
+          <div className="grid grid-cols-2 gap-4 w-full max-w-sm">
             <Button
               size="lg"
               onClick={() => onSelectRole('user')}
@@ -115,22 +115,11 @@ export function LandingPage({ onSelectRole }: LandingPageProps) {
               <Server className="h-6 w-6" />
               <span className="text-sm font-semibold">Tracker</span>
             </Button>
-            <Button
-              size="lg"
-              onClick={() => onSelectRole('marketplace')}
-              variant="outline"
-              className="h-24 flex-col gap-3 border-chart-4/30 text-foreground hover:bg-chart-4/10"
-            >
-              <ShoppingCart className="h-6 w-6" />
-              <span className="text-sm font-semibold">Marketplace</span>
-            </Button>
           </div>
           <p className="text-xs text-muted-foreground text-center mt-2">
-            <strong>User:</strong> View your ratio, announce torrents, register content.
+            <strong>User:</strong> View your ratio, announce torrents, trade data in the marketplace.
             <br />
             <strong>Tracker:</strong> Manage registered users, deploy new contracts.
-            <br />
-            <strong>Marketplace:</strong> Buy & sell data with any token via Uniswap.
           </p>
         </div>
       </div>

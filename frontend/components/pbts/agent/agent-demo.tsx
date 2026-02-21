@@ -16,7 +16,7 @@ export function AgentDemo() {
         </h2>
         <p className="text-xs text-muted-foreground mt-0.5">
           AI agents autonomously discover, verify, and exchange training data
-          via the PBTS BitTorrent protocol
+          via the Neural Torrent protocol
         </p>
       </div>
 

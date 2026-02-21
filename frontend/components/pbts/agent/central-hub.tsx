@@ -69,7 +69,7 @@ export function CentralHub({ currentStep }: CentralHubProps) {
 
         <Shield className="h-7 w-7 text-primary/70 drop-shadow-sm" />
         <span className="text-[10px] font-bold text-foreground/80 mt-0.5">
-          PBTS
+          NT
         </span>
         <span className="text-[7px] text-muted-foreground">
           Tracker

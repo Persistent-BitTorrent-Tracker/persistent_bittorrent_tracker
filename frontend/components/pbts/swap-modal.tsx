@@ -180,7 +180,7 @@ export function SwapModal({
       // Step 4: Confirm payment with backend
       setStep("confirming")
 
-      const confirmMsg = `Confirm PBTS marketplace payment for ${listing.infohash} by ${buyerAddress} at ${Date.now()}`
+      const confirmMsg = `Confirm Neural Torrent marketplace payment for ${listing.infohash} by ${buyerAddress} at ${Date.now()}`
       const sig = await signMessage(confirmMsg)
       const finalTxHash = txHash || `0xconfirm_${Date.now().toString(16)}`
 

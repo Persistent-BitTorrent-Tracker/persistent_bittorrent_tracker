@@ -63,9 +63,10 @@ function getTokenDecimals(address: string): number {
 
 interface MarketplaceDashboardProps {
   onBack: () => void
+  embedded?: boolean
 }
 
-export function MarketplaceDashboard({ onBack }: MarketplaceDashboardProps) {
+export function MarketplaceDashboard({ onBack, embedded }: MarketplaceDashboardProps) {
   const wallet = useWallet()
   const { theme, setTheme } = useTheme()
   const [backendOnline, setBackendOnline] = useState<boolean | null>(null)
@@ -143,7 +144,7 @@ export function MarketplaceDashboard({ onBack }: MarketplaceDashboardProps) {
     // Convert human-readable amount to base units
     const amountInBaseUnits = ethers.parseUnits(priceAmount, token.decimals).toString()
 
-    const message = `PBTS set price for ${priceInfohash.trim()} at ${Date.now()}`
+    const message = `Neural Torrent set price for ${priceInfohash.trim()} at ${Date.now()}`
 
     try {
       const signature = await wallet.signMessage(message)
@@ -189,78 +190,8 @@ export function MarketplaceDashboard({ onBack }: MarketplaceDashboardProps) {
     setPurchasedHashes((prev) => new Set(prev).add(infohash))
   }, [])
 
-  return (
-    <div className="min-h-screen flex flex-col bg-background">
-      {/* Header */}
-      <header className="border-b border-border bg-card/50 backdrop-blur-sm sticky top-0 z-40">
-        <div className="max-w-5xl mx-auto px-4 py-3 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <Button variant="ghost" size="sm" onClick={onBack} className="text-muted-foreground hover:text-foreground">
-              <ArrowLeft className="h-4 w-4 mr-1" />
-              Back
-            </Button>
-            <div className="h-8 w-8 rounded-md bg-primary/10 border border-primary/20 flex items-center justify-center">
-              <Shield className="h-4 w-4 text-primary" />
-            </div>
-            <span className="text-lg font-bold text-foreground tracking-tight">PBTS</span>
-            <Badge variant="outline" className="text-xs border-chart-4/30 text-chart-4 bg-chart-4/5">
-              Marketplace
-            </Badge>
-          </div>
-
-          <div className="flex items-center gap-3">
-            <Badge
-              variant="outline"
-              className={`text-xs font-mono hidden sm:flex ${
-                backendOnline === null
-                  ? "border-border text-muted-foreground"
-                  : backendOnline
-                    ? "border-success/30 text-success bg-success/5"
-                    : "border-destructive/30 text-destructive bg-destructive/5"
-              }`}
-            >
-              <span
-                className={`h-1.5 w-1.5 rounded-full mr-1.5 ${
-                  backendOnline === null
-                    ? "bg-muted-foreground animate-pulse"
-                    : backendOnline
-                      ? "bg-success"
-                      : "bg-destructive"
-                }`}
-              />
-              {backendOnline === null ? "checking..." : backendOnline ? "backend online" : "backend offline"}
-            </Badge>
-
-            {wallet.address && (
-              <button
-                onClick={handleCopy}
-                className="flex items-center gap-2 px-3 py-1.5 rounded-md bg-secondary border border-border hover:border-primary/30 transition-colors"
-              >
-                <span className="text-sm font-mono text-foreground">
-                  {shortenAddress(wallet.address)}
-                </span>
-                {copied ? (
-                  <Check className="h-3.5 w-3.5 text-primary" />
-                ) : (
-                  <Copy className="h-3.5 w-3.5 text-muted-foreground" />
-                )}
-              </button>
-            )}
-
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
-              className="text-muted-foreground hover:text-foreground"
-              aria-label="Toggle theme"
-            >
-              {theme === "dark" ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
-            </Button>
-          </div>
-        </div>
-      </header>
-
-      <main className="flex-1 max-w-5xl mx-auto w-full px-4 py-6 flex flex-col gap-6">
+  const marketplaceContent = (
+    <>
         {/* Intro banner */}
         <Card className="border-chart-4/20 bg-chart-4/5">
           <CardContent className="pt-6 flex flex-col sm:flex-row items-center gap-4">
@@ -507,8 +438,6 @@ export function MarketplaceDashboard({ onBack }: MarketplaceDashboardProps) {
             </div>
           </CardContent>
         </Card>
-      </main>
-
       {/* Swap Modal */}
       {selectedListing && (
         <SwapModal
@@ -521,6 +450,87 @@ export function MarketplaceDashboard({ onBack }: MarketplaceDashboardProps) {
           onPurchaseComplete={handlePurchaseComplete}
         />
       )}
+    </>
+  )
+
+  if (embedded) {
+    return marketplaceContent
+  }
+
+  return (
+    <div className="min-h-screen flex flex-col bg-background">
+      {/* Header */}
+      <header className="border-b border-border bg-card/50 backdrop-blur-sm sticky top-0 z-40">
+        <div className="max-w-5xl mx-auto px-4 py-3 flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <Button variant="ghost" size="sm" onClick={onBack} className="text-muted-foreground hover:text-foreground">
+              <ArrowLeft className="h-4 w-4 mr-1" />
+              Back
+            </Button>
+            <div className="h-8 w-8 rounded-md bg-primary/10 border border-primary/20 flex items-center justify-center">
+              <Shield className="h-4 w-4 text-primary" />
+            </div>
+            <span className="text-lg font-bold text-foreground tracking-tight">Neural Torrent</span>
+            <Badge variant="outline" className="text-xs border-chart-4/30 text-chart-4 bg-chart-4/5">
+              Marketplace
+            </Badge>
+          </div>
+
+          <div className="flex items-center gap-3">
+            <Badge
+              variant="outline"
+              className={`text-xs font-mono hidden sm:flex ${
+                backendOnline === null
+                  ? "border-border text-muted-foreground"
+                  : backendOnline
+                    ? "border-success/30 text-success bg-success/5"
+                    : "border-destructive/30 text-destructive bg-destructive/5"
+              }`}
+            >
+              <span
+                className={`h-1.5 w-1.5 rounded-full mr-1.5 ${
+                  backendOnline === null
+                    ? "bg-muted-foreground animate-pulse"
+                    : backendOnline
+                      ? "bg-success"
+                      : "bg-destructive"
+                }`}
+              />
+              {backendOnline === null ? "checking..." : backendOnline ? "backend online" : "backend offline"}
+            </Badge>
+
+            {wallet.address && (
+              <button
+                onClick={handleCopy}
+                className="flex items-center gap-2 px-3 py-1.5 rounded-md bg-secondary border border-border hover:border-primary/30 transition-colors"
+              >
+                <span className="text-sm font-mono text-foreground">
+                  {shortenAddress(wallet.address)}
+                </span>
+                {copied ? (
+                  <Check className="h-3.5 w-3.5 text-primary" />
+                ) : (
+                  <Copy className="h-3.5 w-3.5 text-muted-foreground" />
+                )}
+              </button>
+            )}
+
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
+              className="text-muted-foreground hover:text-foreground"
+              aria-label="Toggle theme"
+            >
+              {theme === "dark" ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
+            </Button>
+          </div>
+        </div>
+      </header>
+
+      <main className="flex-1 max-w-5xl mx-auto w-full px-4 py-6 flex flex-col gap-6">
+        {marketplaceContent}
+      </main>
     </div>
   )
 }

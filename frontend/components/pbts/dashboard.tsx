@@ -77,7 +77,7 @@ export function Dashboard({ address, onDisconnect, onBack }: DashboardProps) {
     setAnnounceResult(null)
 
     const infohash = generateMockInfohash()
-    const message = `PBTS announce ${infohash} started by ${address} at ${Date.now()}`
+    const message = `Neural Torrent announce ${infohash} started by ${address} at ${Date.now()}`
 
     try {
       const signature = await wallet.signMessage(message)
