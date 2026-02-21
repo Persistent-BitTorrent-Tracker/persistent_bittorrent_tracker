@@ -4,10 +4,11 @@ import cors from "cors";
 import config from "./config/index";
 import { registerHandler } from "./routes/register";
 import { reportHandler } from "./routes/report";
-import { announceHandler } from "./routes/announce";
+import { announceHandler, swarm } from "./routes/announce";
 import { bindPeerHandler } from "./routes/bindPeer";
 import { resolvePeerHandler } from "./routes/resolvePeer";
-import { migrateFrom } from "./utils/contract";
+import { migrateFrom, getUserReputation, getUserRatio, formatRatio } from "./utils/contract";
+import { getKnownAddresses } from "./tracker/userRegistry";
 
 const app = express();
 
@@ -22,9 +23,91 @@ app.post("/announce", announceHandler);
 app.post("/bind-peer", bindPeerHandler);
 app.get("/resolve-peer", resolvePeerHandler);
 
+/**
+ * GET /reputation/:address
+ *
+ * Public read-only endpoint — queries on-chain reputation for any address.
+ * No authentication required (the data is public on-chain anyway).
+ */
+app.get("/reputation/:address", async (req: Request, res: Response): Promise<void> => {
+  const { address } = req.params;
+
+  if (!address || !/^0x[0-9a-fA-F]{40}$/.test(address)) {
+    res.status(400).json({ error: "Invalid Ethereum address" });
+    return;
+  }
+
+  try {
+    const rep = await getUserReputation(address);
+    const ratioScaled = await getUserRatio(address);
+    const ratio = formatRatio(ratioScaled);
+
+    res.json({
+      address,
+      uploadBytes: rep.uploadBytes.toString(),
+      downloadBytes: rep.downloadBytes.toString(),
+      ratio: isFinite(ratio) ? ratio : null,
+      lastUpdated: Number(rep.lastUpdated),
+      isRegistered: rep.lastUpdated > 0n,
+    });
+  } catch (err) {
+    console.error(`[/reputation] Error querying ${address}:`, err);
+    res.status(500).json({ error: "Failed to query reputation" });
+  }
+});
+
+/**
+ * GET /users
+ *
+ * Returns all known registered addresses with their on-chain reputation.
+ * Addresses are tracked in-memory as users register or appear in receipts.
+ */
+app.get("/users", async (_req: Request, res: Response): Promise<void> => {
+  const addresses = getKnownAddresses();
+
+  try {
+    const users = await Promise.all(
+      addresses.map(async (address) => {
+        const rep = await getUserReputation(address);
+        const ratioScaled = await getUserRatio(address);
+        const ratio = formatRatio(ratioScaled);
+
+        return {
+          address,
+          uploadBytes: rep.uploadBytes.toString(),
+          downloadBytes: rep.downloadBytes.toString(),
+          ratio: isFinite(ratio) ? ratio : null,
+          lastUpdated: Number(rep.lastUpdated),
+          isRegistered: rep.lastUpdated > 0n,
+        };
+      })
+    );
+
+    res.json({ users });
+  } catch (err) {
+    console.error("[/users] Error querying users:", err);
+    res.status(500).json({ error: "Failed to query users" });
+  }
+});
+
 // Health check — useful for load balancers and CI smoke tests.
 app.get("/health", (_req, res) => {
   res.json({ status: "ok", timestamp: new Date().toISOString() });
+});
+
+/**
+ * GET /torrents
+ *
+ * Returns all active torrents in the swarm with their peer counts.
+ * Public endpoint — no authentication required.
+ */
+app.get("/torrents", (_req: Request, res: Response): void => {
+  const torrents = Array.from(swarm.entries()).map(([infohash, peers]) => ({
+    infohash,
+    peerCount: peers.size,
+    peers: Array.from(peers),
+  }));
+  res.json({ torrents });
 });
 
 /**

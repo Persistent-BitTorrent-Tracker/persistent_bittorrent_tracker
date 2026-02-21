@@ -11,7 +11,7 @@ import {
 import { peerRegistry } from "../tracker/peerRegistry";
 
 // In-memory swarm: infohash → Set of active user addresses (lowercase).
-const swarm = new Map<string, Set<string>>();
+export const swarm = new Map<string, Set<string>>();
 
 /**
  * Build a peer list from the in-memory swarm, excluding the requesting user.

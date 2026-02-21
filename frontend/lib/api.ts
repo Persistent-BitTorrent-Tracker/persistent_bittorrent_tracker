@@ -153,6 +153,70 @@ export async function checkHealth(): Promise<boolean> {
   }
 }
 
+// ── Reputation lookup ─────────────────────────────────────────────────────
+
+export interface ReputationResponse {
+  address: string
+  uploadBytes: string
+  downloadBytes: string
+  ratio: number | null
+  lastUpdated: number
+  isRegistered: boolean
+}
+
+/**
+ * Query on-chain reputation for any address via GET /reputation/:address.
+ * Public endpoint — no authentication required.
+ */
+export async function getReputation(address: string): Promise<ReputationResponse> {
+  const res = await fetch(`${BASE_URL}/reputation/${address}`)
+  const data = await res.json()
+
+  if (!res.ok) {
+    const message = (data as ApiError).error ?? `HTTP ${res.status}`
+    throw new Error(message)
+  }
+
+  return data as ReputationResponse
+}
+
+/**
+ * Fetch all known users and their on-chain reputation via GET /users.
+ */
+export async function getAllUsers(): Promise<ReputationResponse[]> {
+  try {
+    const res = await fetch(`${BASE_URL}/users`)
+    if (!res.ok) return []
+    const data = (await res.json()) as { users: ReputationResponse[] }
+    return data.users
+  } catch {
+    return []
+  }
+}
+
+// ── Torrent listing ──────────────────────────────────────────────────────
+
+export interface TorrentInfo {
+  infohash: string
+  peerCount: number
+  peers: string[]
+}
+
+/**
+ * Fetch all active torrents in the swarm via GET /torrents.
+ * Public endpoint — no authentication required.
+ */
+export async function getTorrents(): Promise<TorrentInfo[]> {
+  try {
+    const res = await fetch(`${BASE_URL}/torrents`)
+    if (!res.ok) return []
+    const data = (await res.json()) as { torrents: TorrentInfo[] }
+    return data.torrents
+  } catch {
+    return []
+  }
+}
+
 export interface MigrateResponse {
   success: boolean
   oldContract: string
