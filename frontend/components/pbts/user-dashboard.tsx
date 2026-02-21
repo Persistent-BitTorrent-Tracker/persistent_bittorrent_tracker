@@ -188,7 +188,8 @@ export function UserDashboard({ onBack }: UserDashboardProps) {
 
   // Announce: query the tracker for a specific torrent
   // Falls back to local simulation when backend is offline
-  const handleAnnounce = useCallback(async (infohash: string) => {
+  // isSeeder: true when registering content (you have the file) — do NOT increase download
+  const handleAnnounce = useCallback(async (infohash: string, isSeeder = false) => {
     if (!wallet.address) {
       toast.error("Connect your wallet first")
       return
@@ -239,16 +240,20 @@ export function UserDashboard({ onBack }: UserDashboardProps) {
       await loadTorrents()
     } catch {
       // Backend offline — simulate locally
+      // Seeders (registering content) don't download — only leechers do
       const torrent = torrents.find((t) => t.infohash === infohash)
       const torrentSize = (torrent && "size" in torrent) ? (torrent as DemoTorrent).size : 256 * 1024 * 1024
 
-      const newDownload = downloadBytes + torrentSize
+      const newDownload = isSeeder ? downloadBytes : downloadBytes + torrentSize
       const newRatio = calculateRatio(uploadBytes, newDownload)
       const minRatio = 0.5
 
-      if (newRatio >= minRatio) {
+      if (!isSeeder) {
         setDownloadBytes(newDownload)
-        setRatio(newRatio)
+      }
+      setRatio(newRatio)
+
+      if (newRatio >= minRatio) {
         setAnnounceResult({
           infohash,
           status: "allowed",
@@ -258,14 +263,36 @@ export function UserDashboard({ onBack }: UserDashboardProps) {
             { ip: "172.16.0.15", port: 6883 },
           ],
           ratio: newRatio,
-          message: `Access granted. Downloaded ${formatBytes(torrentSize)} (simulated).`,
+          message: isSeeder
+            ? "Access granted. You joined the swarm as a seeder."
+            : `Access granted. Downloaded ${formatBytes(torrentSize)} (simulated).`,
         })
         toast.success("Access Granted!", {
-          description: `Simulated download of ${formatBytes(torrentSize)}`,
+          description: isSeeder ? "You're now seeding this content." : `Simulated download of ${formatBytes(torrentSize)}`,
         })
+        // Add newly registered torrent to the list (backend offline)
+        if (isSeeder) {
+          setTorrents((prev) => {
+            const exists = prev.some((t) => t.infohash.toLowerCase() === infohash.toLowerCase())
+            if (exists) {
+              return prev.map((t) =>
+                t.infohash.toLowerCase() === infohash.toLowerCase()
+                  ? { ...t, peerCount: t.peerCount + 1, peers: [...(t.peers || []), wallet.address].filter(Boolean) as string[] }
+                  : t
+              )
+            }
+            const newTorrent: TorrentInfo & Partial<DemoTorrent> = {
+              infohash,
+              peerCount: 1,
+              peers: wallet.address ? [wallet.address] : [],
+              name: `${infohash.slice(0, 8)}...`,
+              size: torrentSize,
+              category: "other",
+            }
+            return [...prev, newTorrent]
+          })
+        }
       } else {
-        setDownloadBytes(newDownload)
-        setRatio(newRatio)
         const deficit = (minRatio * newDownload) - uploadBytes
         setAnnounceResult({
           infohash,
@@ -347,8 +374,8 @@ export function UserDashboard({ onBack }: UserDashboardProps) {
       await handleRegister()
     }
 
-    // Now announce as seeder
-    await handleAnnounce(infohash)
+    // Now announce as seeder (don't increase download — we already have the file)
+    await handleAnnounce(infohash, true)
     setRegisterInfohash("")
   }, [wallet, registerInfohash, isRegistered, handleRegister, handleAnnounce])
 
