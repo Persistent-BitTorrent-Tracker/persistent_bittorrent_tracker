@@ -1,5 +1,5 @@
 
-import { useState, useMemo, useCallback, useRef } from "react"
+import { useState, useMemo, useCallback } from "react"
 import { toast } from "sonner"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -7,7 +7,6 @@ import { Badge } from "@/components/ui/badge"
 import { Progress } from "@/components/ui/progress"
 import {
   Search,
-  Upload,
   Download,
   ArrowUpDown,
   Film,
@@ -19,14 +18,11 @@ import {
   ChevronUp,
   ChevronDown,
   X,
-  Plus,
-  Loader2,
   HardDrive,
   CheckCircle2,
 } from "lucide-react"
 import type { TorrentFile, FileCategory } from "@/lib/pbts-types"
 import { formatBytes, FILE_CATEGORIES } from "@/lib/pbts-types"
-import { getMockTorrentFiles, generateMockInfohash } from "@/lib/pbts-store"
 
 type SortKey = "name" | "size" | "seeders" | "addedAt"
 type SortDir = "asc" | "desc"
@@ -40,20 +36,18 @@ const CATEGORY_ICONS: Record<FileCategory, typeof Film> = {
 }
 
 interface FilesBrowserProps {
+  files: TorrentFile[]
   address: string
   onTransferTriggered?: (fileName: string, size: number) => void
 }
 
-export function FilesBrowser({ address, onTransferTriggered }: FilesBrowserProps) {
-  const [files, setFiles] = useState<TorrentFile[]>(getMockTorrentFiles)
+export function FilesBrowser({ files, address, onTransferTriggered }: FilesBrowserProps) {
   const [searchQuery, setSearchQuery] = useState("")
   const [activeCategory, setActiveCategory] = useState<FileCategory | "all">("all")
   const [sortKey, setSortKey] = useState<SortKey>("addedAt")
   const [sortDir, setSortDir] = useState<SortDir>("desc")
   const [downloadingIds, setDownloadingIds] = useState<Set<string>>(new Set())
   const [downloadProgress, setDownloadProgress] = useState<Record<string, number>>({})
-  const [isUploading, setIsUploading] = useState(false)
-  const fileInputRef = useRef<HTMLInputElement>(null)
 
   const filteredFiles = useMemo(() => {
     let result = files
@@ -147,62 +141,6 @@ export function FilesBrowser({ address, onTransferTriggered }: FilesBrowserProps
     [downloadingIds, onTransferTriggered]
   )
 
-  const handleUpload = useCallback(async () => {
-    fileInputRef.current?.click()
-  }, [])
-
-  const handleFileSelected = useCallback(
-    async (e: React.ChangeEvent<HTMLInputElement>) => {
-      const selectedFiles = e.target.files
-      if (!selectedFiles || selectedFiles.length === 0) return
-
-      setIsUploading(true)
-
-      const file = selectedFiles[0]
-      toast.info(`Preparing torrent: ${file.name}`, {
-        description: "Generating infohash and registering on-chain...",
-      })
-
-      await new Promise((resolve) => setTimeout(resolve, 2000))
-
-      const categories: FileCategory[] = ["video", "audio", "software", "documents", "other"]
-      const ext = file.name.split(".").pop()?.toLowerCase() || ""
-      let category: FileCategory = "other"
-      if (["mp4", "mkv", "avi", "mov", "webm"].includes(ext)) category = "video"
-      else if (["mp3", "flac", "wav", "ogg", "aac"].includes(ext)) category = "audio"
-      else if (["exe", "dmg", "deb", "tar", "gz", "zip", "iso", "appimage"].includes(ext))
-        category = "software"
-      else if (["pdf", "doc", "docx", "txt", "epub", "md"].includes(ext))
-        category = "documents"
-
-      const newFile: TorrentFile = {
-        id: crypto.randomUUID(),
-        name: file.name,
-        size: file.size,
-        infohash: generateMockInfohash(),
-        seeders: 1,
-        leechers: 0,
-        uploaded: Date.now(),
-        category,
-        addedAt: Date.now(),
-        isSeeding: true,
-      }
-
-      setFiles((prev) => [newFile, ...prev])
-      setIsUploading(false)
-
-      // Reset the file input
-      if (fileInputRef.current) fileInputRef.current.value = ""
-
-      onTransferTriggered?.(file.name, file.size)
-
-      toast.success(`Torrent created: ${file.name}`, {
-        description: `Infohash: ${newFile.infohash.slice(0, 12)}... Now seeding.`,
-      })
-    },
-    [onTransferTriggered]
-  )
-
   const SortIcon = ({ column }: { column: SortKey }) => {
     if (sortKey !== column)
       return <ArrowUpDown className="h-3 w-3 text-muted-foreground" />
@@ -226,7 +164,7 @@ export function FilesBrowser({ address, onTransferTriggered }: FilesBrowserProps
           <span className="text-xs font-semibold text-foreground">{files.length}</span>
         </div>
         <div className="flex items-center gap-2 px-3 py-2 rounded-md border border-border bg-card">
-          <Upload className="h-4 w-4 text-success" />
+          <Users className="h-4 w-4 text-success" />
           <span className="text-xs text-muted-foreground">Seeding:</span>
           <span className="text-xs font-semibold text-foreground">{totalSeeding}</span>
         </div>
@@ -237,48 +175,24 @@ export function FilesBrowser({ address, onTransferTriggered }: FilesBrowserProps
         </div>
       </div>
 
-      {/* Search + Upload bar */}
-      <div className="flex items-center gap-3 flex-wrap">
-        <div className="relative flex-1 min-w-[200px]">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-          <Input
-            placeholder="Search by name or infohash..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="pl-10 bg-card border-border text-foreground placeholder:text-muted-foreground focus-visible:ring-primary"
-          />
-          {searchQuery && (
-            <button
-              onClick={() => setSearchQuery("")}
-              className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-            >
-              <X className="h-4 w-4" />
-              <span className="sr-only">Clear search</span>
-            </button>
-          )}
-        </div>
-
-        <input
-          ref={fileInputRef}
-          type="file"
-          onChange={handleFileSelected}
-          className="hidden"
-          aria-label="Choose file to upload"
+      {/* Search bar */}
+      <div className="relative">
+        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+        <Input
+          placeholder="Search by name or infohash..."
+          value={searchQuery}
+          onChange={(e) => setSearchQuery(e.target.value)}
+          className="pl-10 bg-card border-border text-foreground placeholder:text-muted-foreground focus-visible:ring-primary"
         />
-        <Button
-          onClick={handleUpload}
-          disabled={isUploading}
-          className="bg-primary text-primary-foreground hover:bg-primary/90 gap-2"
-        >
-          {isUploading ? (
-            <Loader2 className="h-4 w-4 animate-spin" />
-          ) : (
-            <Plus className="h-4 w-4" />
-          )}
-          <span className="hidden sm:inline">
-            {isUploading ? "Creating torrent..." : "Upload File"}
-          </span>
-        </Button>
+        {searchQuery && (
+          <button
+            onClick={() => setSearchQuery("")}
+            className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+          >
+            <X className="h-4 w-4" />
+            <span className="sr-only">Clear search</span>
+          </button>
+        )}
       </div>
 
       {/* Category tabs */}

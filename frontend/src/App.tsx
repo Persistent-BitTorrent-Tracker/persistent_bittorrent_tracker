@@ -9,12 +9,16 @@ export type AppView = 'landing' | 'user' | 'tracker' | 'marketplace'
 export default function App() {
   const [view, setView] = useState<AppView>('landing')
 
+  const handleBackToLanding = () => {
+    setView('landing')
+  }
+
   if (view === 'user') {
-    return <UserDashboard onBack={() => setView('landing')} />
+    return <UserDashboard onBack={handleBackToLanding} />
   }
 
   if (view === 'tracker') {
-    return <TrackerDashboard onBack={() => setView('landing')} />
+    return <TrackerDashboard onBack={handleBackToLanding} />
   }
 
   if (view === 'marketplace') {

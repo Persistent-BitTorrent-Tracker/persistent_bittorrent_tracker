@@ -5,6 +5,7 @@ import type {
   ContractInfo,
   TorrentFile,
 } from "./pbts-types"
+import type { TorrentInfo } from "./api"
 import {
   MOCK_CONTRACT_ADDRESS,
   MOCK_MIGRATED_FROM,
@@ -232,6 +233,65 @@ export function getMockTorrentFiles(): TorrentFile[] {
       category: "other",
       addedAt: Date.now() - 3600000,
       isSeeding: true,
+    },
+  ]
+}
+
+export interface DemoTorrent extends TorrentInfo {
+  name: string
+  size: number
+  category: "video" | "audio" | "software" | "documents" | "other"
+}
+
+export function getDemoTorrents(): DemoTorrent[] {
+  return [
+    {
+      infohash: "dd8255ecdc7ca55fb0bbf81323d87062db1f6d1c",
+      peerCount: 42,
+      peers: ["0xd8dA6BF2...6045", "0xBE0eB53F...33E8", "0x742d35Cc...2bD18"],
+      name: "Big Buck Bunny [1080p].mkv",
+      size: 4831838208,
+      category: "video",
+    },
+    {
+      infohash: "a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6e7f8a9b0",
+      peerCount: 127,
+      peers: ["0xd8dA6BF2...6045", "0x1f9840a8...F984"],
+      name: "Sintel [4K HDR].mkv",
+      size: 8589934592,
+      category: "video",
+    },
+    {
+      infohash: "b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6e7f8a9b0c1",
+      peerCount: 89,
+      peers: ["0xBE0eB53F...33E8"],
+      name: "LibreOffice-7.6.4-Linux-x86_64.tar.gz",
+      size: 314572800,
+      category: "software",
+    },
+    {
+      infohash: "c3d4e5f6a7b8c9d0e1f2a3b4c5d6e7f8a9b0c1d2",
+      peerCount: 15,
+      peers: ["0x742d35Cc...2bD18", "0xd8dA6BF2...6045"],
+      name: "Creative Commons Best of 2025.zip",
+      size: 1073741824,
+      category: "audio",
+    },
+    {
+      infohash: "d4e5f6a7b8c9d0e1f2a3b4c5d6e7f8a9b0c1d2e3",
+      peerCount: 203,
+      peers: ["0xBE0eB53F...33E8", "0x742d35Cc...2bD18", "0x1f9840a8...F984", "0xd8dA6BF2...6045"],
+      name: "Solidity Smart Contract Patterns.pdf",
+      size: 52428800,
+      category: "documents",
+    },
+    {
+      infohash: "e5f6a7b8c9d0e1f2a3b4c5d6e7f8a9b0c1d2e3f4",
+      peerCount: 543,
+      peers: ["0xd8dA6BF2...6045", "0xBE0eB53F...33E8"],
+      name: "Ubuntu 24.04 LTS Desktop.iso",
+      size: 5368709120,
+      category: "software",
     },
   ]
 }

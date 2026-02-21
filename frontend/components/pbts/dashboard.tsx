@@ -10,7 +10,8 @@ import { AnnounceCard } from "./announce-card"
 import { ActivityFeed } from "./activity-feed"
 import { NetworkReputation } from "./network-reputation"
 import { FilesBrowser } from "./files-browser"
-import type { UserReputation, ActivityItem, AnnounceResult, ContractInfo } from "@/lib/pbts-types"
+import { AgentDemo } from "./agent/agent-demo"
+import type { UserReputation, ActivityItem, AnnounceResult, ContractInfo, TorrentFile } from "@/lib/pbts-types"
 import { formatBytes, shortenAddress, MOCK_CONTRACT_ADDRESS } from "@/lib/pbts-types"
 import {
   createInitialReputation,
@@ -18,6 +19,7 @@ import {
   createActivity,
   getContractInfo,
   generateMockInfohash,
+  getMockTorrentFiles,
 } from "@/lib/pbts-store"
 import { announce as apiAnnounce, checkHealth, migrateContract } from "@/lib/api"
 import { useWallet } from "@/hooks/useWallet"
@@ -25,11 +27,13 @@ import { useWallet } from "@/hooks/useWallet"
 interface DashboardProps {
   address: string
   onDisconnect: () => void
+  onBack?: () => void
 }
 
-export function Dashboard({ address, onDisconnect }: DashboardProps) {
+export function Dashboard({ address, onDisconnect, onBack }: DashboardProps) {
   const wallet = useWallet()
   const [activeTab, setActiveTab] = useState<DashboardTab>("dashboard")
+  const [files] = useState<TorrentFile[]>(getMockTorrentFiles)
   const [reputation, setReputation] = useState<UserReputation>(
     createInitialReputation(address)
   )
@@ -248,6 +252,7 @@ export function Dashboard({ address, onDisconnect }: DashboardProps) {
         activeTab={activeTab}
         onTabChange={setActiveTab}
         onDisconnect={onDisconnect}
+        onBack={onBack}
         backendOnline={backendOnline}
       />
 
@@ -272,6 +277,16 @@ export function Dashboard({ address, onDisconnect }: DashboardProps) {
           }`}
         >
           Files
+        </button>
+        <button
+          onClick={() => setActiveTab("agent")}
+          className={`flex-1 py-2.5 text-sm font-medium text-center transition-colors ${
+            activeTab === "agent"
+              ? "text-primary border-b-2 border-primary"
+              : "text-muted-foreground"
+          }`}
+        >
+          Agent
         </button>
       </div>
 
@@ -304,11 +319,14 @@ export function Dashboard({ address, onDisconnect }: DashboardProps) {
             {/* Activity feed */}
             <ActivityFeed activities={activities} />
           </>
-        ) : (
+        ) : activeTab === "files" ? (
           <FilesBrowser
+            files={files}
             address={address}
             onTransferTriggered={handleFileTransfer}
           />
+        ) : (
+          <AgentDemo />
         )}
       </main>
 

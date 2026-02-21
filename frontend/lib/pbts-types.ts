@@ -59,7 +59,7 @@ export interface TorrentFile {
 export type FileCategory = TorrentFile["category"]
 
 export const FILE_CATEGORIES: { label: string; value: FileCategory | "all" }[] = [
-  { label: "All Files", value: "all" },
+  { label: "All Torrents", value: "all" },
   { label: "Video", value: "video" },
   { label: "Audio", value: "audio" },
   { label: "Software", value: "software" },
