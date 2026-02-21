@@ -13,7 +13,13 @@ import { getKnownAddresses } from "./tracker/userRegistry";
 const app = express();
 
 // ── Middleware ─────────────────────────────────────────────────────────────
-app.use(cors());
+// NOTE: origin: "*" is intentionally permissive for the hackathon demo.
+// Restrict to specific origins before using in production.
+app.use(cors({
+  origin: "*",
+  methods: ["GET", "POST"],
+  allowedHeaders: ["Content-Type", "Authorization"],
+}));
 app.use(express.json());
 
 // ── Routes ─────────────────────────────────────────────────────────────────
@@ -93,6 +99,60 @@ app.get("/users", async (_req: Request, res: Response): Promise<void> => {
 // Health check — useful for load balancers and CI smoke tests.
 app.get("/health", (_req, res) => {
   res.json({ status: "ok", timestamp: new Date().toISOString() });
+});
+
+/**
+ * GET /agent-tools
+ *
+ * Tool-discovery endpoint for autonomous agents (e.g. CloudLLM).
+ * Returns a machine-readable description of every available API action.
+ */
+app.get("/agent-tools", (_req: Request, res: Response): void => {
+  res.json({
+    minRatio: config.minRatio,
+    tools: [
+      {
+        name: "register",
+        method: "POST",
+        path: "/register",
+        description: "Register a new user on-chain. Sign any UTF-8 string message with the user's wallet (EIP-191 personal_sign) and include the resulting hex signature.",
+        body: { userAddress: "string", message: "string (any UTF-8 text)", signature: "string (EIP-191 hex)" },
+      },
+      {
+        name: "announce",
+        method: "POST",
+        path: "/announce",
+        description: `Announce interest in a torrent infohash. Returns the swarm peer list when the caller's upload/download ratio is ≥ ${config.minRatio} (configurable via MIN_RATIO).`,
+        body: { userAddress: "string", infohash: "string", event: "started|stopped|completed", message: "string", signature: "string" },
+      },
+      {
+        name: "report",
+        method: "POST",
+        path: "/report",
+        description: "Submit a signed piece receipt to update upload/download reputation on-chain.",
+        body: { infohash: "string", sender: "string", receiver: "string", pieceHash: "string", pieceIndex: "number", pieceSize: "number", timestamp: "number", signature: "string" },
+      },
+      {
+        name: "reputation",
+        method: "GET",
+        path: "/reputation/:address",
+        description: "Query on-chain reputation for any Ethereum address.",
+        params: { address: "0x-prefixed Ethereum address" },
+      },
+      {
+        name: "users",
+        method: "GET",
+        path: "/users",
+        description: "List all known registered addresses with their on-chain reputation.",
+      },
+      {
+        name: "torrents",
+        method: "GET",
+        path: "/torrents",
+        description: "List all active torrents in the swarm with peer counts.",
+      },
+    ],
+  });
 });
 
 /**
