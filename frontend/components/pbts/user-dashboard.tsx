@@ -26,6 +26,7 @@ import {
   RefreshCw,
   Users,
   Download,
+  Tag,
 } from "lucide-react"
 import { useTheme } from "next-themes"
 import { useWallet } from "@/hooks/useWallet"
@@ -524,37 +525,68 @@ export function UserDashboard({ onBack }: UserDashboardProps) {
                   {torrents.map((torrent) => {
                     const isThisAnnouncing = isAnnouncing && announcingHash === torrent.infohash
 
+                    const TOKEN_DECIMALS: Record<string, number> = { ETH: 18, WETH: 18, USDC: 6, UNI: 18 }
+                    const formatTokenAmount = (amount: string, symbol: string) => {
+                      const decimals = TOKEN_DECIMALS[symbol] ?? 18
+                      const human = Number(amount) / 10 ** decimals
+                      return human % 1 === 0 ? human.toString() : human.toFixed(decimals === 6 ? 2 : 4).replace(/0+$/, "").replace(/\.$/, "")
+                    }
+
+                    const shortHash = torrent.infohash.length > 16
+                      ? `${torrent.infohash.slice(0, 10)}...${torrent.infohash.slice(-6)}`
+                      : torrent.infohash
+
                     return (
                       <div
                         key={torrent.infohash}
-                        className="rounded-lg border border-border p-4 flex items-center justify-between gap-4 hover:bg-secondary/30 transition-colors"
+                        className="rounded-lg border border-border p-3 hover:bg-secondary/30 transition-colors"
                       >
-                        <div className="flex flex-col gap-1 min-w-0">
-                          <span className="text-sm font-mono text-foreground truncate">
-                            {torrent.infohash}
-                          </span>
-                          <div className="flex items-center gap-3 text-xs text-muted-foreground">
-                            <span className="flex items-center gap-1">
-                              <Users className="h-3 w-3" />
-                              {torrent.peerCount} peer{torrent.peerCount !== 1 ? "s" : ""}
-                            </span>
+                        <div className="flex items-center justify-between gap-3">
+                          <div className="min-w-0">
+                            {torrent.description && (
+                              <p className="text-sm font-medium text-foreground leading-tight">
+                                {torrent.description}
+                              </p>
+                            )}
+                            <p className="text-[11px] font-mono text-muted-foreground mt-0.5" title={torrent.infohash}>
+                              {shortHash}
+                            </p>
                           </div>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => handleAnnounce(torrent.infohash)}
+                            disabled={isAnnouncing || !wallet.address || !isRegistered}
+                            className="shrink-0 gap-1.5 h-7 text-xs"
+                          >
+                            {isThisAnnouncing ? (
+                              <Loader2 className="h-3 w-3 animate-spin" />
+                            ) : (
+                              <Download className="h-3 w-3" />
+                            )}
+                            Announce
+                          </Button>
                         </div>
-
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => handleAnnounce(torrent.infohash)}
-                          disabled={isAnnouncing || !wallet.address || !isRegistered}
-                          className="shrink-0 gap-1.5"
-                        >
-                          {isThisAnnouncing ? (
-                            <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                          ) : (
-                            <Download className="h-3.5 w-3.5" />
+                        <div className="flex items-center gap-2 mt-2 flex-wrap">
+                          <Badge variant="secondary" className="text-[10px] gap-1 font-normal">
+                            <Users className="h-2.5 w-2.5" />
+                            {torrent.peerCount} peer{torrent.peerCount !== 1 ? "s" : ""}
+                          </Badge>
+                          {torrent.listed && torrent.tokenSymbol && torrent.tokenAmount && (
+                            <Badge variant="outline" className="text-[10px] gap-1 font-normal border-chart-4/50 text-chart-4">
+                              <Tag className="h-2.5 w-2.5" />
+                              {formatTokenAmount(torrent.tokenAmount, torrent.tokenSymbol)} {torrent.tokenSymbol}
+                              {torrent.priceUSDC != null && (
+                                <span className="text-muted-foreground">~${torrent.priceUSDC.toLocaleString()}</span>
+                              )}
+                            </Badge>
                           )}
-                          Announce
-                        </Button>
+                          {torrent.listed && (
+                            <Badge variant="outline" className="text-[10px] font-normal border-chart-4/30 text-chart-4/80">
+                              Marketplace
+                            </Badge>
+                          )}
+                        </div>
                       </div>
                     )
                   })}

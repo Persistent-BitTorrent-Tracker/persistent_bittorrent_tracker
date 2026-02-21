@@ -79,6 +79,17 @@ const config = {
    * calling the /migrate admin endpoint.  Keep this out of version control.
    */
   adminSecret: requireEnv("ADMIN_SECRET", ""),
+
+  /** Uniswap Trading API key — leave empty to use mock mode for demos. */
+  uniswapApiKey: process.env["UNISWAP_API_KEY"] ?? "",
+
+  /** Uniswap Trading API base URL. */
+  uniswapApiBaseUrl:
+    process.env["UNISWAP_API_BASE_URL"] ??
+    "https://trade-api.gateway.uniswap.org/v1",
+
+  /** Chain ID for swap operations (defaults to Sepolia). */
+  swapChainId: parseInt(process.env["SWAP_CHAIN_ID"] ?? "11155111", 10),
 };
 
 export default config;

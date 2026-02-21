@@ -9,6 +9,9 @@ import { bindPeerHandler } from "./routes/bindPeer";
 import { resolvePeerHandler } from "./routes/resolvePeer";
 import { migrateFrom, getUserReputation, getUserRatio, formatRatio } from "./utils/contract";
 import { getKnownAddresses } from "./tracker/userRegistry";
+import marketplaceRouter from "./marketplace/routes";
+import { seedDemoData } from "./marketplace/seedData";
+import { getContentPrice, SEPOLIA_TOKENS } from "./marketplace/pricingStore";
 
 const app = express();
 
@@ -22,6 +25,7 @@ app.post("/report", reportHandler);
 app.post("/announce", announceHandler);
 app.post("/bind-peer", bindPeerHandler);
 app.get("/resolve-peer", resolvePeerHandler);
+app.use("/marketplace", marketplaceRouter);
 
 /**
  * GET /reputation/:address
@@ -96,17 +100,56 @@ app.get("/health", (_req, res) => {
 });
 
 /**
+ * Approximate USD rates for demo display (same as Uniswap mock mode).
+ * In production you'd fetch live rates from an oracle or the Uniswap API.
+ */
+const APPROX_USD_RATES: Record<string, number> = {
+  ETH: 2500,
+  WETH: 2500,
+  USDC: 1,
+  UNI: 8,
+};
+
+/** Convert a token amount (in base units) to approximate USDC value. */
+function approxUSDC(tokenSymbol: string, amount: string): number | null {
+  const rate = APPROX_USD_RATES[tokenSymbol.toUpperCase()];
+  if (rate == null) return null;
+  const tokenInfo = Object.values(SEPOLIA_TOKENS).find(
+    (t) => t.symbol.toUpperCase() === tokenSymbol.toUpperCase()
+  );
+  if (!tokenInfo) return null;
+  const human = Number(amount) / 10 ** tokenInfo.decimals;
+  return parseFloat((human * rate).toFixed(2));
+}
+
+/**
  * GET /torrents
  *
  * Returns all active torrents in the swarm with their peer counts.
+ * If a torrent is listed on the marketplace, includes pricing info
+ * and an approximate USDC equivalent.
  * Public endpoint — no authentication required.
  */
 app.get("/torrents", (_req: Request, res: Response): void => {
-  const torrents = Array.from(swarm.entries()).map(([infohash, peers]) => ({
-    infohash,
-    peerCount: peers.size,
-    peers: Array.from(peers),
-  }));
+  const torrents = Array.from(swarm.entries()).map(([infohash, peers]) => {
+    const listing = getContentPrice(infohash);
+    return {
+      infohash,
+      peerCount: peers.size,
+      peers: Array.from(peers),
+      // Marketplace pricing (null if not listed)
+      ...(listing
+        ? {
+            listed: true,
+            description: listing.description,
+            tokenSymbol: listing.tokenSymbol,
+            tokenAmount: listing.amount,
+            sellerAddress: listing.sellerAddress,
+            priceUSDC: approxUSDC(listing.tokenSymbol, listing.amount),
+          }
+        : { listed: false }),
+    };
+  });
   res.json({ torrents });
 });
 
@@ -149,6 +192,11 @@ app.post("/migrate", async (req: Request, res: Response): Promise<void> => {
     res.status(500).json({ error: "Migration failed" });
   }
 });
+
+// ── Seed demo data (development only) ─────────────────────────────────────
+if (config.nodeEnv !== "test") {
+  seedDemoData();
+}
 
 // ── Start Express ─────────────────────────────────────────────────────────
 const server = app.listen(config.port, () => {

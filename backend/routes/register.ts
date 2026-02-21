@@ -5,6 +5,7 @@ import {
   isUserRegistered,
   registerUser,
 } from "../utils/contract";
+import { trackAddress } from "../tracker/userRegistry";
 
 /**
  * POST /register
@@ -49,6 +50,7 @@ export async function registerHandler(req: Request, res: Response): Promise<void
     }
 
     const receipt = await registerUser(userAddress);
+    trackAddress(userAddress);
     res.status(201).json({
       success: true,
       userAddress,
