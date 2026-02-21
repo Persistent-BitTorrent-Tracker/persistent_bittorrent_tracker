@@ -279,32 +279,68 @@ function applyReputationSubStep(state: DemoState, sub: number): DemoState {
 function applyChokingSubStep(state: DemoState, sub: number): DemoState {
   let agents = { ...state.agents }
   let connections = [...state.connections]
+  let particles = [...state.particles]
 
   if (sub === 0) {
-    // Highlight VOXL
+    // VOXL requests data from SATO — draw connection
+    agents = setAgentState(agents, "D", { state: "discovering" })
+    connections.push({
+      id: "choke-D-C",
+      from: "D",
+      to: "C",
+      state: "drawing",
+      color: "rgba(168, 85, 247, 0.4)",
+    })
   } else if (sub === 1) {
-    // Warning state
+    // Connection established, VOXL starts receiving
+    agents = setAgentState(agents, "D", { state: "receiving" })
+    agents = setAgentState(agents, "C", { state: "transferring" })
+    connections = connections.map((c) =>
+      c.id === "choke-D-C" ? { ...c, state: "transferring" as const } : c
+    )
   } else if (sub === 2) {
-    // VOXL has been free-riding
+    // Particles flow from SATO (C) to VOXL (D)
+    particles = [
+      { id: "choke-p-0", connectionId: "choke-D-C", progress: 0.8, color: "rgba(245, 158, 11, 0.8)" },
+      { id: "choke-p-1", connectionId: "choke-D-C", progress: 0.5, color: "rgba(245, 158, 11, 0.8)" },
+      { id: "choke-p-2", connectionId: "choke-D-C", progress: 0.2, color: "rgba(245, 158, 11, 0.8)" },
+    ]
   } else if (sub === 3) {
-    // Choking enforced
-    // Remove hub connections for D, add error connection
+    // VOXL downloaded but didn't seed back
+    agents = setAgentState(agents, "C", { state: "idle" })
+    agents = setAgentState(agents, "D", { state: "idle" })
+    particles = []
+    connections = connections.map((c) =>
+      c.id === "choke-D-C" ? { ...c, state: "active" as const } : c
+    )
+  } else if (sub === 4) {
+    // Ratio drops
+    agents = setAgentState(agents, "D", {
+      downloadBytes: agents["D"].downloadBytes + 2_147_483_648, // +2GB
+      ratio: 0.04,
+    })
+  } else if (sub === 5) {
+    // Tracker detects free-rider
+  } else if (sub === 6) {
+    // Connections turn red and retract
     connections = connections.map((c) =>
       c.from === "D" || c.to === "D"
         ? { ...c, state: "error" as const }
         : c
     )
-  } else if (sub === 4) {
-    agents = setAgentState(agents, "D", { state: "choked" })
+  } else if (sub === 7) {
+    // VOXL gets choked
+    agents = setAgentState(agents, "D", { state: "choked", ratio: 0.04 })
     connections = connections.filter((c) => c.from !== "D" && c.to !== "D")
   } else {
-    // Final narration
+    // Final narration — no state change
   }
 
   return {
     ...state,
     agents,
     connections,
+    particles: sub >= 2 && sub <= 2 ? particles : sub > 2 ? [] : state.particles,
     narration: addNarration(state.narration, "choking", sub),
   }
 }

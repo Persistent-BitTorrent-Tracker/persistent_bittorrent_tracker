@@ -84,36 +84,7 @@ export function ConnectionLine({
             />
           )}
 
-          {/* Label at midpoint */}
-          {label && (
-            <motion.g
-              initial={{ opacity: 0, scale: 0.8 }}
-              animate={{ opacity: 1, scale: 1 }}
-              transition={{ delay: 0.5, duration: 0.3 }}
-            >
-              <rect
-                x={midX - 42}
-                y={midY - 10}
-                width={84}
-                height={20}
-                rx={10}
-                fill="rgba(34, 197, 94, 0.15)"
-                stroke="rgba(34, 197, 94, 0.3)"
-                strokeWidth={1}
-              />
-              <text
-                x={midX}
-                y={midY + 4}
-                textAnchor="middle"
-                fill="rgb(134, 239, 172)"
-                fontSize={9}
-                fontWeight={600}
-                fontFamily="system-ui"
-              >
-                {label}
-              </text>
-            </motion.g>
-          )}
+          {/* Label rendered separately via onLabelPosition */}
         </g>
       ) : null}
     </AnimatePresence>

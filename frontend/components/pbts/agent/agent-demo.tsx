@@ -32,18 +32,25 @@ export function AgentDemo() {
         onSpeedChange={setSpeed}
       />
 
-      {/* Network canvas */}
-      <NetworkCanvas
-        agents={state.agents}
-        connections={state.connections}
-        particles={state.particles}
-        currentStep={state.currentStep}
-        subStep={state.subStep}
-        transferProgress={state.transferProgress}
-      />
+      {/* Canvas + Activity Log side by side (3:1) */}
+      <div className="flex gap-4 h-[700px]">
+        {/* Network canvas — 3/4 width */}
+        <div className="flex-[3] min-w-0">
+          <NetworkCanvas
+            agents={state.agents}
+            connections={state.connections}
+            particles={state.particles}
+            currentStep={state.currentStep}
+            subStep={state.subStep}
+            transferProgress={state.transferProgress}
+          />
+        </div>
 
-      {/* Narration panel */}
-      <NarrationPanel entries={state.narration} />
+        {/* Narration panel — 1/4 width */}
+        <div className="flex-[1] min-w-0 h-full">
+          <NarrationPanel entries={state.narration} />
+        </div>
+      </div>
     </div>
   )
 }

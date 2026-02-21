@@ -96,10 +96,10 @@ export const AGENTS: AgentDefinition[] = [
 ]
 
 export const AGENT_POSITIONS: Record<AgentId, AgentPosition> = {
-  A: { x: "8%", y: "50%" },
-  B: { x: "32%", y: "10%" },
-  C: { x: "68%", y: "10%" },
-  D: { x: "92%", y: "50%" },
+  A: { x: "12%", y: "50%" },
+  B: { x: "35%", y: "20%" },
+  C: { x: "65%", y: "20%" },
+  D: { x: "88%", y: "50%" },
 }
 
 export const DEMO_STEPS: StepDefinition[] = [
@@ -149,8 +149,8 @@ export const DEMO_STEPS: StepDefinition[] = [
     step: "choking",
     label: "Choking",
     description: "Free-rider gets blocked",
-    durationMs: 5000,
-    subStepCount: 6,
+    durationMs: 8000,
+    subStepCount: 9,
   },
 ]
 
@@ -206,11 +206,14 @@ export function getStepNarration(
       { text: "Both agents maintain healthy ratios — network access preserved", type: "success" },
     ],
     choking: [
-      { text: "Scanning network for unhealthy ratios...", type: "info" },
-      { text: "WARNING: VOXL ratio at 0.08 — far below minimum threshold (0.50)", type: "warning" },
-      { text: "VOXL has been downloading without contributing data back", type: "error" },
-      { text: "PBTS enforcing choking mechanism on VOXL...", type: "error" },
-      { text: "VOXL is now BLOCKED from the network until ratio improves", type: "error" },
+      { text: "VOXL requests satellite imagery from SATO...", type: "info" },
+      { text: "SATO grants peer access — VOXL begins downloading", type: "info" },
+      { text: "Pieces flowing: SATO → VOXL (satellite imagery transfer)", type: "info" },
+      { text: "VOXL downloads 2GB but does NOT seed any speech data back", type: "warning" },
+      { text: "VOXL ratio drops: 0.08 → 0.04 — below minimum threshold (0.50)", type: "warning" },
+      { text: "PBTS tracker detects free-rider behavior...", type: "error" },
+      { text: "Choking mechanism enforced — VOXL connections severed", type: "error" },
+      { text: "VOXL is now BLOCKED from the network until it seeds data", type: "error" },
       { text: "Free-rider protection enforced — honest agents are protected", type: "highlight" },
     ],
   }

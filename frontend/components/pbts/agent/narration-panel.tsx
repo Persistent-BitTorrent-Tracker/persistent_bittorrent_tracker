@@ -1,6 +1,6 @@
-import { useEffect, useRef } from "react"
+import { useRef } from "react"
 import { motion, AnimatePresence } from "framer-motion"
-import { ScrollArea } from "@/components/ui/scroll-area"
+
 import type { NarrationEntry } from "@/lib/agent-demo-types"
 
 const TYPE_COLORS: Record<NarrationEntry["type"], string> = {
@@ -17,20 +17,15 @@ interface NarrationPanelProps {
 
 export function NarrationPanel({ entries }: NarrationPanelProps) {
   const scrollRef = useRef<HTMLDivElement>(null)
-  const bottomRef = useRef<HTMLDivElement>(null)
-
-  useEffect(() => {
-    bottomRef.current?.scrollIntoView({ behavior: "smooth" })
-  }, [entries.length])
 
   return (
-    <div className="border border-border rounded-lg bg-card/50 backdrop-blur-sm">
-      <div className="px-4 py-2 border-b border-border">
+    <div className="border border-border rounded-lg bg-card/50 backdrop-blur-sm h-full flex flex-col overflow-hidden">
+      <div className="px-4 py-2 border-b border-border shrink-0">
         <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
           Activity Log
         </p>
       </div>
-      <ScrollArea className="h-[160px]" ref={scrollRef}>
+      <div className="flex-1 overflow-y-auto min-h-0" ref={scrollRef}>
         <div className="px-4 py-2 space-y-1.5">
           <AnimatePresence mode="popLayout">
             {entries.map((entry) => (
@@ -62,14 +57,13 @@ export function NarrationPanel({ entries }: NarrationPanelProps) {
               </motion.div>
             ))}
           </AnimatePresence>
-          <div ref={bottomRef} />
           {entries.length === 0 && (
             <p className="text-xs text-muted-foreground text-center py-6">
               Press Play to start the demo
             </p>
           )}
         </div>
-      </ScrollArea>
+      </div>
     </div>
   )
 }

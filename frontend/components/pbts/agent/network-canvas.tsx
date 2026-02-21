@@ -1,4 +1,5 @@
 import { useRef, useState, useEffect, useMemo } from "react"
+import { motion, AnimatePresence } from "framer-motion"
 import type {
   AgentId,
   AgentWithState,
@@ -70,13 +71,14 @@ export function NetworkCanvas({
   const renderableConnections = connections.filter(
     (c) =>
       c.id.startsWith("discovery") ||
-      c.id.startsWith("transfer")
+      c.id.startsWith("transfer") ||
+      c.id.startsWith("choke")
   )
 
   return (
     <div
       ref={canvasRef}
-      className="relative flex-1 min-h-[400px] rounded-lg border border-border bg-card/20 overflow-hidden"
+      className="relative h-full rounded-lg border border-border bg-card/20 overflow-hidden"
     >
       {/* Background grid */}
       <div
@@ -144,22 +146,23 @@ export function NetworkCanvas({
             )
           })}
 
-          {/* Data particles during transfer */}
-          {currentStep === "transfer" &&
-            particles.map((p, i) => {
+          {/* Data particles — flow from uploader to downloader */}
+          {particles.map((p, i) => {
               const conn = connections.find((c) => c.id === p.connectionId)
               if (!conn) return null
-              // Particles flow from source to destination (B -> A)
-              const from = agentPixelPositions[conn.from]
-              const to = agentPixelPositions[conn.to]
-              if (!from || !to) return null
+              // conn.to is the uploader (data source), conn.from is the downloader
+              // For discovery-A-B: A discovered B, data flows B→A
+              // For choke-D-C: D requested from C, data flows C→D
+              const src = agentPixelPositions[conn.to]
+              const dst = agentPixelPositions[conn.from]
+              if (!src || !dst) return null
               return (
                 <DataParticle
                   key={p.id}
-                  fromX={from.x}
-                  fromY={from.y}
-                  toX={to.x}
-                  toY={to.y}
+                  fromX={src.x}
+                  fromY={src.y}
+                  toX={dst.x}
+                  toY={dst.y}
                   hubX={hubX}
                   hubY={hubY}
                   color={p.color}
@@ -187,6 +190,36 @@ export function NetworkCanvas({
           />
         )
       )}
+
+      {/* Connection labels (rendered as DOM elements above agent cards) */}
+      <AnimatePresence>
+        {renderableConnections
+          .filter((c) => c.label)
+          .map((conn) => {
+            const from = agentPixelPositions[conn.from]
+            const to = agentPixelPositions[conn.to]
+            if (!from || !to) return null
+            const midX = (from.x + to.x) / 2
+            const midY = (from.y + to.y) / 2
+            return (
+              <motion.div
+                key={`label-${conn.id}`}
+                className="absolute z-20 -translate-x-1/2 -translate-y-1/2 pointer-events-none"
+                style={{ left: midX, top: midY }}
+                initial={{ opacity: 0, scale: 0.7 }}
+                animate={{ opacity: 1, scale: 1 }}
+                exit={{ opacity: 0, scale: 0.7 }}
+                transition={{ duration: 0.4 }}
+              >
+                <div className="px-4 py-1.5 rounded-full bg-green-500/20 border border-green-500/40 backdrop-blur-sm shadow-lg shadow-green-500/10">
+                  <span className="text-sm font-bold text-green-400 tracking-wide">
+                    {conn.label}
+                  </span>
+                </div>
+              </motion.div>
+            )
+          })}
+      </AnimatePresence>
 
       {/* Proof overlay */}
       <ProofOverlay
