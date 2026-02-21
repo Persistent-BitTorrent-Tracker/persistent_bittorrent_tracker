@@ -1,16 +1,13 @@
-import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import {
   Shield,
-  ArrowUpDown,
-  Globe,
   User,
   Server,
   Sun,
   Moon,
-  ShoppingCart,
 } from "lucide-react"
 import { useTheme } from "next-themes"
+import { useState } from "react"
 import type { AppView } from "@/src/App"
 
 interface LandingPageProps {
@@ -19,29 +16,7 @@ interface LandingPageProps {
 
 export function LandingPage({ onSelectRole }: LandingPageProps) {
   const { theme, setTheme } = useTheme()
-
-  const features = [
-    {
-      icon: Shield,
-      title: "Cryptographic Attestation",
-      description: "TEE sign receipts for received data pieces. Verifiable and tamper-proof.",
-    },
-    {
-      icon: ArrowUpDown,
-      title: "Persistent Reputation",
-      description: "Agent reputation stored on-chain. Survives across networks and tracker shutdowns.",
-    },
-    {
-      icon: Globe,
-      title: "Censorship Resistant",
-      description: "Decentralized agent coordination. No single point of failure or control.",
-    },
-    {
-      icon: ShoppingCart,
-      title: "Agent Data Marketplace",
-      description: "Agents trade training data autonomously. Cross-token swaps via Uniswap.",
-    },
-  ]
+  const [hoveredButton, setHoveredButton] = useState<'user' | 'tracker' | null>(null)
 
   return (
     <div className="min-h-screen flex flex-col items-center justify-center px-4 relative">
@@ -68,29 +43,6 @@ export function LandingPage({ onSelectRole }: LandingPageProps) {
           <p className="text-lg text-muted-foreground text-center text-balance leading-relaxed">
             Web3-Enhanced BitTorrent Network for Self-Evolving AI Agents
           </p>
-          <Badge
-            variant="outline"
-            className="text-xs font-mono border-primary/30 text-primary bg-primary/5"
-          >
-            AI Agent Data Network
-          </Badge>
-        </div>
-
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4 w-full">
-          {features.map((feature) => (
-            <div
-              key={feature.title}
-              className="rounded-lg border border-border bg-card p-4 flex flex-col gap-3"
-            >
-              <feature.icon className="h-5 w-5 text-primary" />
-              <h3 className="text-sm font-semibold text-card-foreground">
-                {feature.title}
-              </h3>
-              <p className="text-xs text-muted-foreground leading-relaxed">
-                {feature.description}
-              </p>
-            </div>
-          ))}
         </div>
 
         <div className="flex flex-col items-center gap-4 w-full max-w-lg">
@@ -98,29 +50,54 @@ export function LandingPage({ onSelectRole }: LandingPageProps) {
             Choose your role to continue
           </p>
           <div className="grid grid-cols-2 gap-4 w-full max-w-sm">
-            <Button
-              size="lg"
-              onClick={() => onSelectRole('user')}
-              className="h-24 flex-col gap-3 bg-primary text-primary-foreground hover:bg-primary/90"
-            >
-              <User className="h-6 w-6" />
-              <span className="text-sm font-semibold">User/Agent</span>
-            </Button>
-            <Button
-              size="lg"
-              onClick={() => onSelectRole('tracker')}
-              variant="outline"
-              className="h-24 flex-col gap-3 border-border text-foreground hover:bg-secondary"
-            >
-              <Server className="h-6 w-6" />
-              <span className="text-sm font-semibold">Tracker</span>
-            </Button>
+            <div className="relative h-32">
+              <Button
+                size="lg"
+                onClick={() => onSelectRole('user')}
+                onMouseEnter={() => setHoveredButton('user')}
+                onMouseLeave={() => setHoveredButton(null)}
+                className="h-full w-full flex-col gap-3 bg-primary text-primary-foreground hover:bg-primary/90 transition-all duration-300 p-4"
+              >
+                <User className="h-6 w-6" />
+                <span className="text-sm font-semibold">User/Agent</span>
+                <div
+                  className={`overflow-hidden transition-all duration-300 ease-in-out ${
+                    hoveredButton === 'user'
+                      ? 'max-h-20 opacity-100 mt-2'
+                      : 'max-h-0 opacity-0'
+                  }`}
+                >
+                  <p className="text-xs text-primary-foreground/80 leading-relaxed text-center">
+                    Announce torrents, trade data
+                  </p>
+                </div>
+              </Button>
+            </div>
+            <div className="relative h-32">
+              <Button
+                size="lg"
+                onClick={() => onSelectRole('tracker')}
+                onMouseEnter={() => setHoveredButton('tracker')}
+                onMouseLeave={() => setHoveredButton(null)}
+                variant="outline"
+                className="h-full w-full flex-col gap-3 border-border text-foreground hover:bg-secondary transition-all duration-300 p-4"
+              >
+                <Server className="h-6 w-6" />
+                <span className="text-sm font-semibold">Tracker</span>
+                <div
+                  className={`overflow-hidden transition-all duration-300 ease-in-out ${
+                    hoveredButton === 'tracker'
+                      ? 'max-h-20 opacity-100 mt-2'
+                      : 'max-h-0 opacity-0'
+                  }`}
+                >
+                  <p className="text-xs text-muted-foreground leading-relaxed text-center">
+                    Manage users, deploy contracts
+                  </p>
+                </div>
+              </Button>
+            </div>
           </div>
-          <p className="text-xs text-muted-foreground text-center mt-2">
-            <strong>User/Agent:</strong> View your ratio, announce torrents, trade data in the marketplace.
-            <br />
-            <strong>Tracker:</strong> Manage registered users, deploy new contracts.
-          </p>
         </div>
       </div>
     </div>

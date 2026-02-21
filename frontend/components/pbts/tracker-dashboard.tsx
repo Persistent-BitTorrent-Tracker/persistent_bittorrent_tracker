@@ -33,6 +33,14 @@ import {
 } from "@/lib/pbts-types"
 
 const REGISTERED_WALLETS_KEY = "nt-registered-wallets"
+const USER_REPUTATIONS_KEY = "nt-user-reputations"
+
+interface PersistedReputation {
+  uploadBytes: number
+  downloadBytes: number
+  ratio: number
+  timestamp: number
+}
 
 function getRegisteredWallets(): string[] {
   try {
@@ -40,6 +48,15 @@ function getRegisteredWallets(): string[] {
     return raw ? JSON.parse(raw) : []
   } catch {
     return []
+  }
+}
+
+function getAllUserReputations(): Record<string, PersistedReputation> {
+  try {
+    const raw = localStorage.getItem(USER_REPUTATIONS_KEY)
+    return raw ? JSON.parse(raw) : {}
+  } catch {
+    return {}
   }
 }
 
@@ -74,17 +91,20 @@ export function TrackerDashboard({ onBack }: TrackerDashboardProps) {
         (addr) => !backendAddresses.has(addr.toLowerCase())
       )
 
+      const userReputations = getAllUserReputations()
       const extraUsers = await Promise.all(
         missingWallets.map(async (address) => {
           try {
             return await getReputation(address)
           } catch {
+            // Use localStorage reputation if available
+            const rep = userReputations[address.toLowerCase()]
             return {
               address,
-              uploadBytes: "0",
-              downloadBytes: "0",
-              ratio: null,
-              lastUpdated: 0,
+              uploadBytes: rep ? String(rep.uploadBytes) : "0",
+              downloadBytes: rep ? String(rep.downloadBytes) : "0",
+              ratio: rep ? rep.ratio : null,
+              lastUpdated: rep ? rep.timestamp : 0,
               isRegistered: true,
             } as ReputationResponse
           }
@@ -93,16 +113,20 @@ export function TrackerDashboard({ onBack }: TrackerDashboardProps) {
 
       setUsers([...backendUsers, ...extraUsers])
     } catch {
-      // Backend offline — fall back to localStorage wallets
+      // Backend offline — fall back to localStorage wallets and reputation data
       const localWallets = getRegisteredWallets()
-      const fallbackUsers: ReputationResponse[] = localWallets.map((address) => ({
-        address,
-        uploadBytes: "0",
-        downloadBytes: "0",
-        ratio: null,
-        lastUpdated: 0,
-        isRegistered: true,
-      }))
+      const userReputations = getAllUserReputations()
+      const fallbackUsers: ReputationResponse[] = localWallets.map((address) => {
+        const rep = userReputations[address.toLowerCase()]
+        return {
+          address,
+          uploadBytes: rep ? String(rep.uploadBytes) : "0",
+          downloadBytes: rep ? String(rep.downloadBytes) : "0",
+          ratio: rep ? rep.ratio : null,
+          lastUpdated: rep ? rep.timestamp : 0,
+          isRegistered: true,
+        }
+      })
       setUsers(fallbackUsers)
     }
     setIsLoadingUsers(false)

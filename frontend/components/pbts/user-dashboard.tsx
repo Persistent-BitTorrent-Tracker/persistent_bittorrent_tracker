@@ -58,6 +58,7 @@ import { AgentDemo } from "./agent/agent-demo"
 import { MarketplaceDashboard } from "./marketplace-dashboard"
 
 const REGISTERED_WALLETS_KEY = "nt-registered-wallets"
+const USER_REPUTATIONS_KEY = "nt-user-reputations"
 
 function getRegisteredWallets(): string[] {
   try {
@@ -77,6 +78,37 @@ function addRegisteredWallet(address: string): void {
   }
 }
 
+interface PersistedReputation {
+  uploadBytes: number
+  downloadBytes: number
+  ratio: number
+  timestamp: number
+}
+
+function getAllUserReputations(): Record<string, PersistedReputation> {
+  try {
+    const raw = localStorage.getItem(USER_REPUTATIONS_KEY)
+    return raw ? JSON.parse(raw) : {}
+  } catch {
+    return {}
+  }
+}
+
+function getUserReputation(address: string): PersistedReputation | null {
+  const allReps = getAllUserReputations()
+  return allReps[address.toLowerCase()] || null
+}
+
+function setUserReputation(address: string, reputation: PersistedReputation): void {
+  try {
+    const allReps = getAllUserReputations()
+    allReps[address.toLowerCase()] = reputation
+    localStorage.setItem(USER_REPUTATIONS_KEY, JSON.stringify(allReps))
+  } catch (error) {
+    console.warn("Failed to persist reputation:", error)
+  }
+}
+
 type UserTab = "dashboard" | "torrents" | "marketplace" | "agent"
 
 interface UserDashboardProps {
@@ -90,11 +122,35 @@ export function UserDashboard({ onBack }: UserDashboardProps) {
   const [backendOnline, setBackendOnline] = useState<boolean | null>(null)
   const [copied, setCopied] = useState(false)
 
-  // Reputation state
+  // Reputation state - load from localStorage based on wallet address
   const [uploadBytes, setUploadBytes] = useState(0)
   const [downloadBytes, setDownloadBytes] = useState(0)
   const [ratio, setRatio] = useState(0)
   const [isRegistered, setIsRegistered] = useState(false)
+
+  // Load reputation when wallet connects
+  useEffect(() => {
+    if (wallet.address) {
+      const persistedRep = getUserReputation(wallet.address)
+      if (persistedRep) {
+        setUploadBytes(persistedRep.uploadBytes)
+        setDownloadBytes(persistedRep.downloadBytes)
+        setRatio(persistedRep.ratio)
+      }
+    }
+  }, [wallet.address])
+
+  // Persist reputation changes for current wallet
+  useEffect(() => {
+    if (wallet.address) {
+      setUserReputation(wallet.address, {
+        uploadBytes,
+        downloadBytes,
+        ratio,
+        timestamp: Date.now(),
+      })
+    }
+  }, [wallet.address, uploadBytes, downloadBytes, ratio])
 
   // Torrent listing
   const [torrents, setTorrents] = useState<TorrentInfo[]>([])
@@ -142,10 +198,8 @@ export function UserDashboard({ onBack }: UserDashboardProps) {
       const registered = getRegisteredWallets().includes(address.toLowerCase())
       if (registered) {
         setIsRegistered(true)
+        // Keep persisted reputation when backend is offline
       }
-      setUploadBytes(0)
-      setDownloadBytes(0)
-      setRatio(0)
     }
   }
 
@@ -310,6 +364,32 @@ export function UserDashboard({ onBack }: UserDashboardProps) {
     setIsAnnouncing(false)
     setAnnouncingHash(null)
   }, [wallet, isRegistered, torrents, uploadBytes, downloadBytes])
+
+  // Download: simulate downloading a file and update ratio
+  const handleDownload = useCallback(async (torrent: TorrentInfo) => {
+    if (!wallet.address) {
+      toast.error("Connect your wallet first")
+      return
+    }
+    if (!isRegistered) {
+      toast.error("You must register first")
+      return
+    }
+
+    // Get torrent size (use demo size if not available)
+    const torrentSize = ("size" in torrent) ? (torrent as any).size : 256 * 1024 * 1024
+
+    // Update download bytes and ratio
+    const newDownload = downloadBytes + torrentSize
+    const newRatio = calculateRatio(uploadBytes, newDownload)
+
+    setDownloadBytes(newDownload)
+    setRatio(newRatio)
+
+    toast.success("Download Complete!", {
+      description: `Downloaded ${formatBytes(torrentSize)} — ratio updated to ${newRatio === Infinity ? "INF" : newRatio.toFixed(2)}`,
+    })
+  }, [wallet, isRegistered, uploadBytes, downloadBytes])
 
   // Register: tell the tracker you have content to share (seeder)
   // This registers your account on-chain, then announces the infohash so you join the swarm
@@ -795,7 +875,7 @@ export function UserDashboard({ onBack }: UserDashboardProps) {
               <>
                 {/* Table header */}
                 <div className="bg-secondary/50 border-b border-t border-border">
-                  <div className="grid grid-cols-[1fr_100px_90px_100px] lg:grid-cols-[1fr_120px_100px_130px] items-center px-4 py-2">
+                  <div className="grid grid-cols-[1fr_100px_90px_140px] lg:grid-cols-[1fr_120px_100px_160px] items-center px-4 py-2">
                     <span className="text-xs font-semibold text-muted-foreground">Name</span>
                     <span className="text-xs font-semibold text-muted-foreground">Size</span>
                     <span className="text-xs font-semibold text-muted-foreground">Peers</span>
@@ -828,7 +908,7 @@ export function UserDashboard({ onBack }: UserDashboardProps) {
                     return (
                       <div
                         key={torrent.infohash}
-                        className="grid grid-cols-[1fr_100px_90px_100px] lg:grid-cols-[1fr_120px_100px_130px] items-center px-4 py-3 hover:bg-secondary/30 transition-colors"
+                        className="grid grid-cols-[1fr_100px_90px_140px] lg:grid-cols-[1fr_120px_100px_160px] items-center px-4 py-3 hover:bg-secondary/30 transition-colors"
                       >
                         {/* Name + infohash + marketplace badges */}
                         <div className="flex items-center gap-3 min-w-0">
@@ -867,20 +947,30 @@ export function UserDashboard({ onBack }: UserDashboardProps) {
                         </div>
 
                         {/* Actions */}
-                        <div className="flex items-center gap-2 justify-end">
+                        <div className="flex items-center gap-1 justify-end">
                           <Button
                             variant="ghost"
                             size="sm"
                             onClick={() => handleAnnounce(torrent.infohash)}
                             disabled={isAnnouncing || !wallet.address || !isRegistered}
-                            className="h-7 px-2.5 text-xs text-muted-foreground hover:text-foreground hover:bg-secondary gap-1.5"
+                            className="h-7 px-2 text-xs text-muted-foreground hover:text-foreground hover:bg-secondary gap-1"
                           >
                             {isThisAnnouncing ? (
-                              <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                              <Loader2 className="h-3 w-3 animate-spin" />
                             ) : (
-                              <Download className="h-3.5 w-3.5" />
+                              <Radio className="h-3 w-3" />
                             )}
                             <span className="hidden lg:inline">Announce</span>
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => handleDownload(torrent)}
+                            disabled={!wallet.address || !isRegistered}
+                            className="h-7 px-2 text-xs text-muted-foreground hover:text-foreground hover:bg-secondary gap-1"
+                          >
+                            <Download className="h-3 w-3" />
+                            <span className="hidden lg:inline">Download</span>
                           </Button>
                         </div>
                       </div>
