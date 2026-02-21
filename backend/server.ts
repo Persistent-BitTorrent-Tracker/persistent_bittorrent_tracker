@@ -10,6 +10,7 @@ import { resolvePeerHandler } from "./routes/resolvePeer";
 import { migrateFrom, getUserReputation, getUserRatio, formatRatio } from "./utils/contract";
 import { getKnownAddresses } from "./tracker/userRegistry";
 import marketplaceRouter from "./marketplace/routes";
+import skyboxRouter from "./skybox/routes";
 import { seedDemoData } from "./marketplace/seedData";
 import { getContentPrice, SEPOLIA_TOKENS } from "./marketplace/pricingStore";
 
@@ -30,6 +31,7 @@ app.post("/announce", announceHandler);
 app.post("/bind-peer", bindPeerHandler);
 app.get("/resolve-peer", resolvePeerHandler);
 app.use("/marketplace", marketplaceRouter);
+app.use("/skybox", skyboxRouter);
 
 /**
  * GET /reputation/:address

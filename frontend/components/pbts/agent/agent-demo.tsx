@@ -2,6 +2,26 @@ import { useDemoTimeline } from "@/hooks/use-demo-timeline"
 import { DemoControlBar } from "./demo-control-bar"
 import { NetworkCanvas } from "./network-canvas"
 import { NarrationPanel } from "./narration-panel"
+import { SpatialWorlds } from "./spatial-worlds"
+import type { AgentId } from "@/lib/agent-demo-types"
+
+function getActiveAgents(step: string): AgentId[] {
+  switch (step) {
+    case "registration":
+    case "cataloging":
+      return ["A", "B", "C", "D"]
+    case "discovery":
+    case "proof":
+    case "transfer":
+      return ["A", "B"]
+    case "reputation":
+      return ["A", "B"]
+    case "choking":
+      return ["C", "D"]
+    default:
+      return []
+  }
+}
 
 export function AgentDemo() {
   const { state, play, pause, reset, setSpeed, isComplete } =
@@ -51,6 +71,12 @@ export function AgentDemo() {
           <NarrationPanel entries={state.narration} />
         </div>
       </div>
+
+      {/* Spatial Worlds — Skybox AI integration */}
+      <SpatialWorlds
+        currentStep={state.currentStep}
+        activeAgentIds={getActiveAgents(state.currentStep)}
+      />
     </div>
   )
 }

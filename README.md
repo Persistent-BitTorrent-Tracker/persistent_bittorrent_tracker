@@ -32,10 +32,15 @@ persistent_bittorrent_tracker/
 │   └── script/        # Deployment scripts (DeployPBTS.s.sol)
 ├── backend/           # Bun + Express tracker server
 │   ├── routes/        # API endpoints (register, report, announce)
+│   ├── marketplace/   # Content marketplace with Uniswap integration
+│   ├── skybox/        # Skybox AI spatial environment proxy
 │   ├── utils/         # Signature verification, contract interaction
 │   ├── config/        # Typed config (env resolution, chain ID)
 │   └── tests/         # Jest test suites (api, signatures)
-├── frontend/          # React + Vite + TailwindCSS dashboard (separate developer)
+├── frontend/          # React + Vite + TailwindCSS dashboard
+│   ├── components/    # UI components (dashboard, agent demo, skybox viewer)
+│   ├── hooks/         # React hooks (wallet, demo timeline, skybox)
+│   └── lib/           # API clients, types, utilities
 └── agents/            # Development guidelines and best practices
 ```
 
@@ -43,9 +48,10 @@ persistent_bittorrent_tracker/
 
 - **Smart Contracts**: Solidity 0.8.20 + Foundry
 - **Backend**: Bun / Node.js 18+ with Express.js and ethers.js v6
-- **Frontend**: React + Vite + TailwindCSS
+- **Frontend**: React 19 + Vite + TailwindCSS + Framer Motion
 - **Cryptography**: ECDSA (secp256k1) via ethers.js
 - **Blockchain**: Ethereum Sepolia (chain 11155111) or Avalanche Fuji (chain 43113)
+- **Spatial AI**: Blockade Labs Skybox AI — 360-degree environment generation
 
 ## MVP Scope (4-Day Hackathon)
 
@@ -206,6 +212,7 @@ accessible through the new contract's single-hop referrer delegation.
 - **[Contracts README](./contracts/README.md)** - Smart contract development guide
 - **[Backend README](./backend/README.md)** - Tracker server documentation
 - **[Frontend README](./frontend/README.md)** - Dashboard development guide
+- **[Skybox AI Integration](./SKYBOX_INTEGRATION.md)** - Spatial environment setup and API reference
 
 ## Key Features
 
@@ -216,6 +223,30 @@ accessible through the new contract's single-hop referrer delegation.
 - Censorship-resistant architecture
 - Factory-based contract migration with single-hop referrer delegation
 - Admin-protected `/migrate` endpoint for seamless tracker rotation
+- Content marketplace with Uniswap token swap integration
+- Agent-to-agent data exchange visualization with animated network topology
+- **Skybox AI spatial environments** — 360-degree worlds for each AI agent's data domain
+
+## Skybox AI Integration
+
+The Neural Torrent network integrates **Blockade Labs Skybox AI** to solve the **Homeless Agent Problem** — giving AI agents persistent spatial context to inhabit, explore, and remember.
+
+Each agent operates in a unique 360-degree environment matching its data specialty:
+
+| Agent | Specialty | Spatial Environment |
+|-------|-----------|-------------------|
+| **AURA** | Dashcam & Driving Data | Futuristic highway corridor, Denver Rocky Mountains |
+| **MEDI** | Medical Imaging | High-tech medical imaging lab with holographic displays |
+| **SATO** | Satellite Imagery | Satellite ground station with Colorado terrain overlays |
+| **VOXL** | Speech & Language | Multilingual speech processing room |
+
+**Features:**
+- Backend proxy secures API key server-side (never exposed to browser)
+- CSS-only 360-degree panorama viewer with drag-to-pan and ambient auto-rotation
+- In-memory spatial memory store tracks every environment per agent
+- Frontend memory log shows visited environments with timestamps
+
+To enable, add `SKYBOX_API_KEY` to `backend/.env`. See [SKYBOX_INTEGRATION.md](./SKYBOX_INTEGRATION.md) for full details.
 
 ## Demo Flow
 
@@ -223,6 +254,7 @@ accessible through the new contract's single-hop referrer delegation.
 2. **Simulate Transfer**: Create receipt → Sign → Submit → Watch reputation update
 3. **Announce**: Request peer list → Access granted/denied based on ratio
 4. **Persistence**: Kill server → Restart → Reputation unchanged
+5. **Spatial Worlds**: Agent tab → Select agent → Generate World → Drag to explore 360-degree environment
 
 ## How to Run Demo
 

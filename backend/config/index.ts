@@ -80,6 +80,9 @@ const config = {
    */
   adminSecret: requireEnv("ADMIN_SECRET", ""),
 
+  /** Skybox AI (Blockade Labs) API key — required for spatial environment generation. */
+  skyboxApiKey: process.env["SKYBOX_API_KEY"] ?? "",
+
   /** Uniswap Trading API key — leave empty to use mock mode for demos. */
   uniswapApiKey: process.env["UNISWAP_API_KEY"] ?? "",
 
